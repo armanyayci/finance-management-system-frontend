@@ -56,7 +56,7 @@ const LoginForm = () => {
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             type="text"
-            className="p-4 border border-gray-500 shadow-sm bg-gray-200 w-[70vh] rounded-[250px]"
+            className="p-4 border border-gray-500 shadow-sm bg-white-200 w-[70vh] rounded-[250px]"
           />
         </label>
         <label className="flex flex-col gap-2 text-lg font-semibold mt-4">
@@ -65,7 +65,7 @@ const LoginForm = () => {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             type="password"
-            className="p-4 border border-gray-500 shadow-sm bg-gray-200 w-[70vh] rounded-[250px]"
+            className="p-4 border border-gray-500 shadow-sm bg-white-200 w-[70vh] rounded-[250px]"
           />
         </label>
         <button className="bg-red-600 rounded-[250px] shadow-sm text-black text-lg p-4 mt-[50px] text-lg font-semibold">
