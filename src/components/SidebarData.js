@@ -3,8 +3,8 @@ import HomeIcon from '@mui/icons-material/Home';
 import AddCircleIcon from '@mui/icons-material/AddCircle';
 import LibraryAddCheckIcon from '@mui/icons-material/LibraryAddCheck';
 import CalculateIcon from '@mui/icons-material/Calculate';
-import BusinessCenterIcon from '@mui/icons-material/BusinessCenter';
 import LogoutIcon from '@mui/icons-material/Logout';
+import TranslateIcon from '@mui/icons-material/Translate';
 
 export const SidebarData =
 [
@@ -21,16 +21,16 @@ export const SidebarData =
     {
         title : "Expense Tracker",
         icon : <LibraryAddCheckIcon fontSize='large'/>,
-        link: "/"
+        link: "/expenses"
     },
     {
-        title : "Tax Calculator",
+        title : "Currency Exchange",
         icon : <CalculateIcon fontSize='large'/>,
-        link: "/"
+        link: "/currency"
     },
     {
-        title : "Budget Planner",
-        icon : <BusinessCenterIcon fontSize='large'/>,
+        title : "Currency Converter",
+        icon : <TranslateIcon fontSize='large'/>,
         link: "/"
     },
     {
