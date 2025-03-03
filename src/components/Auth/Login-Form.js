@@ -1,56 +1,60 @@
-import React, { useState } from 'react';
+import React, { useState,useContext } from 'react';
 import { Link, useNavigate } from "react-router-dom";
-import axios from 'axios';
-import {jwtDecode} from 'jwt-decode';
+import { jwtDecode } from 'jwt-decode';
+import { LoginContext } from "../Context/LoginContext";
+import ApiService from '../service/ApiService';
 
 const LoginForm = () => {
-  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [username, setUsername ] =useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const navigate = useNavigate();
-
+  const { loading,setLoading} = useContext(LoginContext);
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
 
-    // Form validation
     if (!username || !password) {
-      setErrorMessage("Please enter both username and password");
-      setTimeout(() => setErrorMessage(''), 3000); // Error message disappears after 3 seconds
+      setErrorMessage("Please enter username, password, and select a role");
+      setTimeout(() => setErrorMessage(''), 3000);
+      setLoading(false);
       return;
     }
 
     const payload = { username, password };
 
     try {
-      const res = await axios.post('http://localhost:8080/finance-mgmt/api/api/authenticate/login', payload);
-      if (res?.data?.success) {
-        const token = res?.data?.data.token;
+      const res = await ApiService.Login(payload);
+    
+      if (res.success) {
+        const token = res.data.token;
         localStorage.setItem('token', token);
-
-         // Decode the token and log it
-      const decodedData = jwtDecode(token);
-      console.log("Decoded Token Data:", decodedData);
-        navigate('/home');
+        const decodedData = jwtDecode(token);
+        localStorage.setItem('username',decodedData.sub)
+        if (decodedData.roles[0] === 'ROLE_USER') {
+          navigate('/home');
+        } 
       } else {
         setErrorMessage("Invalid username or password");
-        setTimeout(() => setErrorMessage(''), 3000); // Error message disappears after 3 seconds
+        setTimeout(() => setErrorMessage(''), 3000);
       }
     } catch (error) {
       setErrorMessage(error.response?.data?.message || "Login failed. Please try again.");
-      setTimeout(() => setErrorMessage(''), 3000); // Error message disappears after 3 seconds
+      setTimeout(() => setErrorMessage(''), 3000);
     }
+    setLoading(false);
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen">
-      <form onSubmit={handleSubmit} className="flex flex-col">
-        {/* Error message */}
+    <div className="flex items-center justify-center min-h-screen relative">
+      <form onSubmit={handleSubmit} className={`flex flex-col ${loading ? 'pointer-events-none opacity-50' : ''}`}>
         {errorMessage && (
           <div className="text-red-600 bg-red-200 p-2 rounded-md mb-2 w-[70vh] text-center shadow-md">
             {errorMessage}
           </div>
         )}
-        <label className="flex flex-col gap-2 text-lg font-semibold">
+        
+        <label className="flex flex-col gap-2 text-lg font-semibold mt-4">
           Username
           <input
             value={username}
@@ -59,6 +63,7 @@ const LoginForm = () => {
             className="p-4 border border-gray-500 shadow-sm bg-white-200 w-[70vh] rounded-[250px]"
           />
         </label>
+        
         <label className="flex flex-col gap-2 text-lg font-semibold mt-4">
           Password
           <input
@@ -68,13 +73,15 @@ const LoginForm = () => {
             className="p-4 border border-gray-500 shadow-sm bg-white-200 w-[70vh] rounded-[250px]"
           />
         </label>
-        <button className="bg-red-600 rounded-[250px] shadow-sm text-black text-lg p-4 mt-[50px] text-lg font-semibold">
+        
+        <button className="bg-red-600 rounded-[250px] shadow-sm text-black text-lg p-4 mt-[50px] text-lg font-semibold" disabled={loading}>
           Login
         </button>
+        
         <div className="text-center mb-4 mt-4 font-semibold">
           Don't you have an account? 
           <Link to="/register">
-            <button className="bg-blue-800 rounded shadow-sm text-black text-sm p-4 mt-4 text-lg font-semibold ml-4 w-[200px] rounded-[250px]">Register</button>
+            <button className="bg-blue-800 rounded shadow-sm text-black text-sm p-4 mt-4 text-lg font-semibold ml-4 w-[200px] rounded-[250px]" disabled={loading}>Register</button>
           </Link>
         </div>
       </form>
@@ -83,4 +90,3 @@ const LoginForm = () => {
 };
 
 export default LoginForm;
-
