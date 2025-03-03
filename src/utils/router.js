@@ -2,6 +2,8 @@ import {createBrowserRouter, } from "react-router-dom";
 import Home from '../pages/Home';
 import Login from "../pages/Login";
 import Register from "../pages/Register";
+import Expenses from "../pages/Expenses";
+import CurrencyList from "../pages/CurrencyList";
 export const router = createBrowserRouter([
     {
       path: "/",
@@ -14,5 +16,13 @@ export const router = createBrowserRouter([
     {
         path: "/register",
         element:<Register/>,
+      },
+      {
+        path: "/expenses",
+        element:<Expenses/>,
+      },
+      {
+        path: "/currency",
+        element:<CurrencyList/>,
       },
   ]);
