@@ -3,12 +3,10 @@ import Sidebar from '../components/Sidebar';
 import '../Style/HomePage.css';
 import FinancialSummary from '../components/FinancialSummary';
 import ExpenseChart from '../components/ExpenseChart';
-import TotalIncome from '../components/TotalIncome';
-//import { jwtDecode } from 'jwt-decode';
+import LastTransactions from '../components/LastTransactions';
+
 export const Home = () => {
-  // const userToken= localStorage.getItem('token');
-  // const data =jwtDecode(userToken);                   token'dan datayı alma işlemi
-  //  const fullname=data.sub;
+
   return (
     <div className='home'>
     <div><Sidebar/></div>
@@ -18,7 +16,7 @@ export const Home = () => {
           <ExpenseChart/>
       </div>
       <div className='mt-10'>
-        <TotalIncome/>
+        <LastTransactions/>
       </div>
     </div>
     

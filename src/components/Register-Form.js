@@ -3,12 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import ApiService from './service/ApiService';
 
 const RegisterForm = () => {
-  // const [username, setUsername] = useState('');
-  // const [firstname, setFirstname] = useState('');
-  // const [lastname, setLastname] = useState('');
-  // const [password, setPassword] = useState('');
-  // const [email, setEmail] = useState('');
-  const [formData,setFormData]=useState({
+const [formData,setFormData]=useState({
     username:'',
     firstname:'',
     lastname:'',
