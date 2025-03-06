@@ -91,7 +91,7 @@ const ExpenseChart = () => {
 
         {/* Filtrelenmiş Toplam Harcama Miktarı */}
         <p className="text-lg font-medium text-gray-800">
-          Your total expense: <span className="font-bold text-red-500">${filteredTotalAmount}</span>
+          Your total expense in this date rate: <span className="font-bold text-red-500">{filteredTotalAmount} ₺</span>
         </p>
 
         {/* Pie Chart */}
