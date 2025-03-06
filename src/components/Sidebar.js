@@ -1,15 +1,27 @@
-import React, { useState} from "react";
+import React, { useState } from "react";
 import "../Style/HomePage.css";
 import { SidebarData } from "./SidebarData";
 import { useNavigate } from "react-router-dom";
-import CurrencyExchange from "./CurrencyExchange"; // CurrencyExchange bileşeni import edildi
+import CurrencyExchange from "./CurrencyExchange";
+import { Backdrop, CircularProgress, Typography } from "@mui/material";
 
 function Sidebar() {
   const navigate = useNavigate();
-  const [isExchangeOpen, setIsExchangeOpen] = useState(false); // Pop-up state
+  const [isExchangeOpen, setIsExchangeOpen] = useState(false);
+  const [logoutLoading, setLogoutLoading] = useState(false);
 
   const handleLogout = () => {
-    localStorage.removeItem("token"); // Oturumu kapat
+    setLogoutLoading(true);
+
+    setTimeout(() => {
+      localStorage.removeItem("token");
+      localStorage.removeItem("username");
+      localStorage.removeItem("expenses");
+      localStorage.removeItem("firstname");
+      localStorage.removeItem("lastname");
+      setLogoutLoading(false);
+      navigate("/"); // Çıkış sonrası yönlendirme
+    }, 2000); // 2 saniye bekleme süresi
   };
 
   return (
@@ -24,9 +36,8 @@ function Sidebar() {
               onClick={() => {
                 if (val.title === "Logout") {
                   handleLogout();
-                  navigate(val.link);
                 } else if (val.title === "Currency Converter") {
-                  setIsExchangeOpen(true); // Pop-up aç
+                  setIsExchangeOpen(true);
                 } else {
                   navigate(val.link);
                 }
@@ -40,6 +51,12 @@ function Sidebar() {
         </ul>
       </div>
 
+      {/* Logout işlemi sırasında Backdrop ve Progress */}
+      <Backdrop sx={{ color: "#fff", zIndex: 9999, flexDirection: "column" }} open={logoutLoading}>
+        <CircularProgress color="inherit" />
+        <Typography variant="h6" sx={{ marginTop: 2 }}>Çıkış yapılıyor...</Typography>
+      </Backdrop>
+
       {/* Currency Exchange Pop-up */}
       <CurrencyExchange open={isExchangeOpen} handleClose={() => setIsExchangeOpen(false)} />
     </>
@@ -47,3 +64,4 @@ function Sidebar() {
 }
 
 export default Sidebar;
+
