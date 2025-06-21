@@ -58,6 +58,7 @@ const TransferMoney = ({ setIsModalOpen }) => {
       senderId: senderId, // Burada senderId artık dinamik olarak username'e göre alınıyor
       code: recipient,
       money: parseFloat(amount),
+      description: description,
     };
 
     try {
