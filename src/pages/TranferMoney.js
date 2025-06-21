@@ -1,37 +1,41 @@
-import React, { useState, useEffect } from 'react';
-import ApiService from '../components/service/ApiService';
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import React, { useState, useEffect } from "react";
+import ApiService from "../components/service/ApiService";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const TransferMoney = ({ setIsModalOpen }) => {
   const [accountInfo, setAccountInfo] = useState(null);
-  const [amount, setAmount] = useState('');
-  const [description, setDescription] = useState('');
-  const [recipient, setRecipient] = useState('');
+  const [amount, setAmount] = useState("");
+  const [description, setDescription] = useState("");
+  const [recipient, setRecipient] = useState("");
   const [senderId, setSenderId] = useState(null);
 
   useEffect(() => {
-    const username = localStorage.getItem('username');
+    const username = localStorage.getItem("username");
 
     const fetchUserData = async () => {
       try {
         // 1️ Kullanıcı hesap bilgilerini al
-        const accountResponse = await ApiService.GetAccountInfoByUsername(username);
+        const accountResponse = await ApiService.GetAccountInfoByUsername(
+          username
+        );
         if (accountResponse.success) {
           setAccountInfo(accountResponse.data);
         }
 
         // 2 Tüm kullanıcıları çek ve username'e göre senderId'yi bul
         const usersResponse = await ApiService.GetAllUsers();
-        const user = usersResponse.find(user => user.username === username);
+        const user = usersResponse.find((user) => user.username === username);
         if (user) {
           setSenderId(user.id);
         } else {
-          toast.error('Kullanıcı bulunamadı!', { position: 'top-right' });
+          toast.error("User not found!", { position: "top-right" });
         }
       } catch (error) {
-        console.error('Hata:', error);
-        toast.error('Veriler alınırken hata oluştu!', { position: 'top-right' });
+        console.error("Error:", error);
+        toast.error("Error occurred while fetching data!", {
+          position: "top-right",
+        });
       }
     };
 
@@ -40,17 +44,17 @@ const TransferMoney = ({ setIsModalOpen }) => {
 
   const handleTransfer = async () => {
     if (!amount || !recipient || !description) {
-      toast.warn('Lütfen tüm alanları doldurun!', { position: 'top-right' });
+      toast.warn("Please fill in all fields!", { position: "top-right" });
       return;
     }
 
     if (parseFloat(amount) > accountInfo?.balance) {
-      toast.error('Balance not enough!', { position: 'top-right' });
+      toast.error("Balance not enough!", { position: "top-right" });
       return;
     }
 
     if (!senderId) {
-      toast.error('Gönderici kimliği bulunamadı!', { position: 'top-right' });
+      toast.error("Sender ID not found!", { position: "top-right" });
       return;
     }
 
@@ -64,17 +68,21 @@ const TransferMoney = ({ setIsModalOpen }) => {
     try {
       const response = await ApiService.moneyTransfer(transferData);
       if (response.success) {
-        toast.success('Money transfer successful!', { position: 'top-right' });
+        toast.success("Money transfer successful!", { position: "top-right" });
         setTimeout(() => {
           window.location.reload();
           setIsModalOpen(false);
         }, 2000);
       } else {
-        toast.error('Transfer failed!: ' + response.message, { position: 'top-right' });
+        toast.error("Transfer failed!: " + response.message, {
+          position: "top-right",
+        });
       }
     } catch (error) {
-      console.error('Transfer operation error:', error);
-      toast.error('There was an error during transfer operation.', { position: 'top-right' });
+      console.error("Transfer operation error:", error);
+      toast.error("There was an error during transfer operation.", {
+        position: "top-right",
+      });
     }
   };
 
@@ -85,7 +93,8 @@ const TransferMoney = ({ setIsModalOpen }) => {
 
       {accountInfo ? (
         <p className="mb-4">
-          <strong>Available Balance:</strong> {accountInfo.balance} {accountInfo.accountType}
+          <strong>Available Balance:</strong> {accountInfo.balance}{" "}
+          {accountInfo.accountType}
         </p>
       ) : (
         <p>Account Information Loading...</p>
