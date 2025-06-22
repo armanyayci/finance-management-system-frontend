@@ -42,4 +42,8 @@ export default class ApiService{
         });
         return response.data;
     }
+    static async getExpenseRate(username, startDate, endDate) {
+        const response = await axios.get(`${this.BASE_URL2}/api/account/expense-rate/${username}/${startDate}/${endDate}`);
+        return response.data;
+    }
 }
