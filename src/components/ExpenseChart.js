@@ -45,6 +45,13 @@ const ExpenseChart = () => {
     .filter((t) => !t.isIncome)
     .reduce((sum, t) => sum + (t.amount || 0), 0);
 
+  // Gelir ve gider oranlarını hesapla
+  const total = totalIncome + totalExpense;
+  const incomePercent =
+    total > 0 ? ((totalIncome / total) * 100).toFixed(1) : 0;
+  const expensePercent =
+    total > 0 ? ((totalExpense / total) * 100).toFixed(1) : 0;
+
   const data = {
     labels: ["Gelir", "Gider"],
     datasets: [
@@ -128,23 +135,15 @@ const ExpenseChart = () => {
             </div>
           )}
         </div>
-        {/* Legend */}
+        {/* Oranlar */}
         {(totalIncome > 0 || totalExpense > 0) && (
-          <div className="flex gap-6 mt-2 text-xs">
-            <div className="flex items-center gap-2">
-              <div
-                className="w-3 h-3 rounded-full"
-                style={{ backgroundColor: incomeColor }}
-              ></div>
-              <span className="text-green-700 font-semibold">Gelir</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div
-                className="w-3 h-3 rounded-full"
-                style={{ backgroundColor: expenseColor }}
-              ></div>
-              <span className="text-red-700 font-semibold">Gider</span>
-            </div>
+          <div className="flex gap-4 mb-2">
+            <span className="inline-flex items-center px-3 py-1 rounded-full bg-green-100 text-green-700 font-bold text-sm">
+              Income: {incomePercent}%
+            </span>
+            <span className="inline-flex items-center px-3 py-1 rounded-full bg-red-100 text-red-700 font-bold text-sm">
+              Expense: {expensePercent}%
+            </span>
           </div>
         )}
       </div>
