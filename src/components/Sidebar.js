@@ -26,7 +26,7 @@ function Sidebar() {
 
   return (
     <>
-      <div className="h-full w-80 bg-gradient-to-b from-slate-900 to-slate-800 shadow-2xl flex flex-col">
+      <div className="h-screen w-80 bg-gradient-to-b from-slate-900 to-slate-800 shadow-2xl flex flex-col overflow-y-hidden z-40">
         {/* Header */}
         <div className="h-20 flex items-center justify-center border-b border-slate-700 bg-gradient-to-r from-blue-600 to-blue-700">
           <div className="flex items-center gap-3">

@@ -4,6 +4,7 @@ import Login from "../pages/Login";
 import Register from "../pages/Register";
 import Expenses from "../pages/Expenses";
 import CurrencyList from "../pages/CurrencyList";
+import Profile from '../pages/Profile';
 
 export const router = createBrowserRouter([
     {
@@ -25,5 +26,9 @@ export const router = createBrowserRouter([
       {
         path: "/currency",
         element:<CurrencyList/>,
+      },
+      {
+        path: "/profile",
+        element:<Profile/>,
       },
   ]);
