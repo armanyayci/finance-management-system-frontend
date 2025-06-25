@@ -45,7 +45,8 @@ export const Login = () => {
         ))}
       </div>
       {/* Center Top: Welcome Message, Slogan, and Badges */}
-      <div className="absolute left-1/2 top-12 -translate-x-1/2 flex flex-col items-center z-20 w-full max-w-2xl">
+      {/* <div className="absolute left-1/2 top-4 -translate-x-1/2 flex flex-col items-center z-20 w-full max-w-2xl"> */}
+       <div className="absolute left-1/2 top-8 md:top-6 lg:top-4 -translate-x-1/2 flex flex-col items-center z-20 w-full max-w-2xl">
         <div className="flex items-center gap-4 animate-fade-in">
           <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
             <circle cx="24" cy="24" r="24" fill="#facc15" fillOpacity="0.25" />
@@ -215,9 +216,13 @@ export const Login = () => {
       )}
 
       {/* Login/Register Card (in-place switch) */}
-      <div
-        className={`bg-white/95 rounded-3xl shadow-2xl flex flex-col items-center px-16 py-16 max-w-2xl w-full transition-all duration-500 z-10`}
-      >
+      {/* <div
+        // className={`bg-white/95 rounded-3xl shadow-2xl flex flex-col items-center px-16 py-16 mt-20 max-w-2xl w-full transition-all duration-500 z-10`}
+      > */}
+        <div
+  className={`bg-white/95 rounded-3xl shadow-2xl flex flex-col items-center px-6 sm:px-10 md:px-16 py-10 sm:py-14 md:py-16 max-w-2xl w-full mt-16 md:mt-20 lg:mt-24 transition-all duration-500 z-10`}
+>
+
         <img src={logo} alt="Logo" className="w-24 h-24 mb-4" />
         {!showRegister ? (
           <LoginForm onShowRegister={() => setShowRegister(true)} />
