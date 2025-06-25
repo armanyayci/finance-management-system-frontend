@@ -31,6 +31,8 @@ import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import { useNavigate } from "react-router-dom";
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import TrendingFlatIcon from '@mui/icons-material/TrendingFlat';
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
+import Popover from '@mui/material/Popover';
 
 const currencyEmojis = {
   USD: "🇺🇸",
@@ -70,8 +72,11 @@ const CurrencyList = () => {
   const [order, setOrder] = useState('asc');
   const [userAccount, setUserAccount] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [userCurrencies, setUserCurrencies] = useState([]);
+  const [userId, setUserId] = useState(null);
   const navigate = useNavigate();
   const isMobile = useMediaQuery('(max-width:600px)');
+  const [anchorEl, setAnchorEl] = useState(null);
 
   // Üstte gösterilecek ana kurlar
   const mainCurrencies = [
@@ -126,16 +131,58 @@ const CurrencyList = () => {
     fetchUserAccount();
   }, []);
 
-  // Arama filtreleme (sekme bazlı)
-  const filteredKeys = currencyKeys.filter(key => {
-    const matchesSearch = key.toLowerCase().includes(search.toLowerCase()) || (currencies[key].Tür || "").toLowerCase().includes(search.toLowerCase());
-    if (tab === 0) {
-      return matchesSearch;
-    } else {
-      // Sell tab: sadece sahip olunanlar ve miktarı > 0
-      return matchesSearch && userAccount?.data?.currencyBalances?.[key] && userAccount.data.currencyBalances[key] > 0 && key !== 'TRY';
+  // Kullanıcı ID'sini ve sahip olduğu dövizleri çek
+  useEffect(() => {
+    const fetchUserIdAndCurrencies = async () => {
+      const username = localStorage.getItem("username");
+      if (!username) return;
+      try {
+        const users = await ApiService.GetAllUsers();
+        const user = Array.isArray(users) ? users.find(u => u.username === username) : null;
+        if (user) {
+          setUserId(user.id);
+          const userCurrenciesRes = await ApiService.getUserCurrencies(user.id);
+          if (userCurrenciesRes.success && Array.isArray(userCurrenciesRes.data)) {
+            setUserCurrencies(userCurrenciesRes.data);
+          }
+        }
+      } catch (err) {
+        setUserCurrencies([]);
+      }
+    };
+    fetchUserIdAndCurrencies();
+  }, []);
+
+  useEffect(() => {
+    if (tab === 1) {
+      const fetchUserIdAndCurrencies = async () => {
+        const username = localStorage.getItem("username");
+        if (!username) return;
+        try {
+          const users = await ApiService.GetAllUsers();
+          const user = Array.isArray(users) ? users.find(u => u.username === username) : null;
+          if (user) {
+            setUserId(user.id);
+            const userCurrenciesRes = await ApiService.getUserCurrencies(user.id);
+            if (userCurrenciesRes.success && Array.isArray(userCurrenciesRes.data)) {
+              setUserCurrencies(userCurrenciesRes.data);
+            }
+          }
+        } catch (err) {
+          setUserCurrencies([]);
+        }
+      };
+      fetchUserIdAndCurrencies();
     }
-  });
+  }, [tab]);
+
+  // Arama filtreleme (sekme bazlı)
+  const filteredKeys = tab === 1
+    ? userCurrencies
+        .filter(c => c.amount > 0 && currencies[c.currencyName])
+        .filter(c => c.currencyName.toLowerCase().includes(search.toLowerCase()) || (currencies[c.currencyName]?.Tür || "").toLowerCase().includes(search.toLowerCase()))
+        .map(c => c.currencyName)
+    : currencyKeys.filter(key => key.toLowerCase().includes(search.toLowerCase()) || (currencies[key].Tür || "").toLowerCase().includes(search.toLowerCase()));
 
   // Sıralama fonksiyonu için değişim değerini doğru parse et
   const parseChange = (str) => parseFloat((str || '0').replace('%', '').replace(',', '.'));
@@ -246,9 +293,42 @@ const CurrencyList = () => {
           const updatedAccountData = await ApiService.GetAccountInfoByUsername(username);
           setUserAccount(updatedAccountData);
         }
-        
-      } else {
-        alert("Sell operation not implemented yet");
+        window.location.reload();
+      } else if (transactionType === "Sell") {
+        const username = localStorage.getItem("username");
+        if (!username) {
+          alert("User not logged in");
+          return;
+        }
+        // Fetch all users and find the userId by username
+        const users = await ApiService.GetAllUsers();
+        const user = Array.isArray(users) ? users.find(u => u.username === username) : null;
+        if (!user) {
+          alert("User not found");
+          return;
+        }
+        const userId = user.id;
+        const rawRate = currencies[selectedCurrency]?.Satış;
+        const conversionRate = parseFloat(fixPrice(rawRate));
+        const currencyConversionRequest = {
+          fromCurrency: selectedCurrency,
+          toCurrency: "TRY",
+          amount: parseFloat(amount),
+          conversionRate: conversionRate,
+          userId: userId
+        };
+        const response = await ApiService.sellCurrency(currencyConversionRequest);
+        if (response.success) {
+          alert(`Successfully sold ${amount} ${selectedCurrency}`);
+          // Refresh account data after successful transaction
+          if (username) {
+            const updatedAccountData = await ApiService.GetAccountInfoByUsername(username);
+            setUserAccount(updatedAccountData);
+          }
+          window.location.reload();
+        } else {
+          alert(response.message || "Sell operation failed!");
+        }
       }
       
       handleClose();
@@ -265,6 +345,10 @@ const CurrencyList = () => {
 
   // Helper to fix price string (remove thousands separator, convert decimal comma to dot)
   const fixPrice = (priceStr) => priceStr ? priceStr.replace(/\./g, '').replace(',', '.') : '0';
+
+  const handlePopoverOpen = (event) => setAnchorEl(event.currentTarget);
+  const handlePopoverClose = () => setAnchorEl(null);
+  const openPopover = Boolean(anchorEl);
 
   // Show loading state
   if (loading) {
@@ -340,6 +424,58 @@ const CurrencyList = () => {
         backdropFilter: 'blur(6px)',
         background: 'rgba(30,41,59,0.93)',
       }}>
+        {/* Sağ üst köşe döviz butonu */}
+        <Box sx={{ position: 'absolute', top: 18, right: 24, zIndex: 10, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Tooltip title="View your owned currencies and balances" arrow>
+            <Button
+              variant="contained"
+              color="info"
+              sx={{
+                borderRadius: 50,
+                minWidth: 0,
+                p: 1.2,
+                boxShadow: 4,
+                background: 'linear-gradient(90deg, #0ea5e9 0%, #6366f1 100%)',
+                border: '2px solid #38bdf8',
+                display: 'flex',
+                alignItems: 'center',
+                transition: 'box-shadow 0.2s, border 0.2s',
+                '&:hover': {
+                  boxShadow: 8,
+                  border: '2.5px solid #2563eb',
+                  background: 'linear-gradient(90deg, #6366f1 0%, #0ea5e9 100%)',
+                },
+              }}
+              onClick={handlePopoverOpen}
+            >
+              <AccountBalanceIcon sx={{ fontSize: 28, color: 'white', mr: 1 }} />
+              <span style={{ fontWeight: 800, fontSize: 16, color: 'white', letterSpacing: 0.5 }}>My Currencies</span>
+            </Button>
+          </Tooltip>
+          <Popover
+            open={openPopover}
+            anchorEl={anchorEl}
+            onClose={handlePopoverClose}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+            transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+            PaperProps={{
+              sx: { p: 2, borderRadius: 3, minWidth: 220, bgcolor: '#f1f5f9', boxShadow: 6 }
+            }}
+            disableRestoreFocus
+          >
+            <Typography sx={{ fontWeight: 800, fontSize: 18, mb: 1, color: '#0e7490' }}>My Currencies</Typography>
+            {userCurrencies.length === 0 ? (
+              <Typography sx={{ color: '#64748b', fontWeight: 600 }}>No currencies owned.</Typography>
+            ) : (
+              userCurrencies.map((c) => (
+                <Box key={c.currencyName} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                  <span style={{ fontWeight: 700, color: '#232946' }}>{c.currencyName}</span>
+                  <span style={{ fontWeight: 700, color: '#0e7490' }}>{c.amount}</span>
+                </Box>
+              ))
+            )}
+          </Popover>
+        </Box>
         {/* Bakiye ve Ana Dövizler */}
         <Box sx={{
           display: 'flex',
@@ -603,7 +739,7 @@ const CurrencyList = () => {
             )}
             {transactionType === 'Sell' && (
               <Chip 
-                label={`Available: ${userAccount?.data?.currencyBalances?.[selectedCurrency] || 0} ${selectedCurrency}`} 
+                label={`Available: ${userCurrencies.find(c => c.currencyName === selectedCurrency)?.amount || 0}`} 
                 color="info" 
                 sx={{ mb: 1, fontWeight: 700, bgcolor: '#f1f5f9', color: '#0e7490' }} 
               />

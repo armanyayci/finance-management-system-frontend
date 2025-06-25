@@ -8,10 +8,12 @@ const paymentTypeIcon = (type) => {
   return <TagIcon className="w-5 h-5 inline-block mr-1 text-gray-500" />;
 };
 
-const LastTransactions = () => {
+const LastTransactions = ({ customClass = '' }) => {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [balance, setBalance] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
   const username = localStorage.getItem('username');
 
   useEffect(() => {
@@ -43,7 +45,6 @@ const LastTransactions = () => {
   let prevBalances = [];
   if (balance !== null && transactions.length > 0) {
     let runningBalance = balance;
-    // transactions are from newest to oldest, so we reverse to calculate
     for (let i = 0; i < transactions.length; i++) {
       prevBalances[i] = runningBalance;
       if (transactions[i].isIncome) {
@@ -54,8 +55,22 @@ const LastTransactions = () => {
     }
   }
 
+  // Sayfalama için işlemleri böl
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentTransactions = transactions.slice(indexOfFirstItem, indexOfLastItem);
+  const currentPrevBalances = prevBalances.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(transactions.length / itemsPerPage);
+
+  const handlePrevPage = () => {
+    setCurrentPage((prev) => Math.max(prev - 1, 1));
+  };
+  const handleNextPage = () => {
+    setCurrentPage((prev) => Math.min(prev + 1, totalPages));
+  };
+
   return (
-    <div className="ml-10">
+    <div className={`ml-10 ${customClass}`}>
       <div className="bg-white w-full min-h-[180px] border border-gray-300 rounded-lg shadow-md p-5">
         <p className='text-xl font-bold mb-6'>Last 3 Days Transactions</p>
         {loading ? (
@@ -64,9 +79,9 @@ const LastTransactions = () => {
           <p>No transactions found for the last 3 days.</p>
         ) : (
           <div className="flex flex-col gap-4">
-            {transactions.map((tx, idx) => (
+            {currentTransactions.map((tx, idx) => (
               <div
-                key={idx}
+                key={indexOfFirstItem + idx}
                 className={`flex items-center justify-between rounded-xl shadow-md p-4 border-l-8 ${tx.isIncome ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50'}`}
               >
                 <div className="flex items-center gap-4">
@@ -90,12 +105,31 @@ const LastTransactions = () => {
                 <div className="text-right">
                   <div className={`text-2xl font-bold ${tx.isIncome ? 'text-green-600' : 'text-red-600'}`}>{tx.isIncome ? '+' : '-'}{tx.amount}₺</div>
                   <div className="text-xs text-gray-500 mt-1">{new Date(tx.date).toLocaleString()}</div>
-                  {prevBalances[idx] !== undefined && (
-                    <div className="text-xs text-blue-700 mt-2 font-semibold">Previous Balance: {prevBalances[idx]}₺</div>
+                  {currentPrevBalances[idx] !== undefined && (
+                    <div className="text-xs text-blue-700 mt-2 font-semibold">Previous Balance: {currentPrevBalances[idx]}₺</div>
                   )}
                 </div>
               </div>
             ))}
+            {totalPages > 1 && (
+              <div className="flex justify-center mt-4 gap-4">
+                <button
+                  onClick={handlePrevPage}
+                  disabled={currentPage === 1}
+                  className={`px-3 py-1 rounded bg-gray-200 text-gray-700 font-semibold hover:bg-gray-300 disabled:opacity-50`}
+                >
+                  Önceki
+                </button>
+                <span className="px-2 py-1 text-gray-700 font-medium">{currentPage} / {totalPages}</span>
+                <button
+                  onClick={handleNextPage}
+                  disabled={currentPage === totalPages}
+                  className={`px-3 py-1 rounded bg-gray-200 text-gray-700 font-semibold hover:bg-gray-300 disabled:opacity-50`}
+                >
+                  Sonraki
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

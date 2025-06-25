@@ -103,8 +103,8 @@ export const Home = () => {
 
   return (
       <div className='home'>
-        <div><Sidebar/></div>
-        <div className='flex-1 p-8 relative'>
+        <div className="fixed left-0 top-0 h-screen z-50"><Sidebar/></div>
+        <div className='flex-1 p-8 relative' style={{marginLeft:'20rem'}}>
           <WeatherWidget />
           {/* Welcome Header */}
           <div className="mb-8">
@@ -118,15 +118,13 @@ export const Home = () => {
             <p className="text-gray-600">Here's your financial overview for today.</p>
           </div>
 
-          {/* Main Content Grid */}
-          <div className='grid grid-cols-1 xl:grid-cols-2 gap-8 mb-8'>
-            <FinancialSummary/>
-            <ExpenseChart/>
+          {/* Main Content Grid - 2li grid + altına LastTransactions */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 items-stretch">
+            <div className="col-span-1 flex flex-col h-full"><FinancialSummary/></div>
+            <div className="col-span-1 flex flex-col h-full"><ExpenseChart/></div>
           </div>
-
-          {/* Transactions Section */}
-          <div className='max-w-full'>
-            <LastTransactions/>
+          <div className="w-full">
+            <LastTransactions customClass="!ml-0"/>
           </div>
         </div>
       </div>

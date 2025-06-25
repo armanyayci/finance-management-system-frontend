@@ -67,4 +67,19 @@ export default class ApiService {
     );
     return response.data;
   }
+  static async getUserCurrencies(userId) {
+    const response = await axios.get(
+      `${this.BASE_URL4}/api/currency-exchange/get-user-currencies`,
+      { params: { userId } }
+    );
+    return response.data;
+  }
+  static async sellCurrency(currencyConversionRequest) {
+    const response = await axios.post(
+      `${this.BASE_URL4}/api/currency-exchange/sell`,
+      currencyConversionRequest,
+      { headers: this.getHeader() }
+    );
+    return response.data;
+  }
 }

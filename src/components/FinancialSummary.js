@@ -5,13 +5,14 @@ import TransferMoney from '../pages/TranferMoney';
 import { Copy } from 'lucide-react';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { BanknotesIcon, IdentificationIcon, ClipboardDocumentIcon, ArrowDownCircleIcon, ArrowUpCircleIcon } from '@heroicons/react/24/outline';
+import { BanknotesIcon, IdentificationIcon, ClipboardDocumentIcon, ArrowDownCircleIcon, ArrowUpCircleIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 
 const FinancialSummary = () => {
   const [accountInfo, setAccountInfo] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [incomeExpense, setIncomeExpense] = useState({ income: 0, expense: 0 });
   const username = localStorage.getItem('username');
+  const [showBalance, setShowBalance] = useState(true);
  
   useEffect(() => {
     const fetchAccountInfo = async () => {
@@ -95,17 +96,32 @@ const FinancialSummary = () => {
                 <div className="flex justify-center gap-6">
                   <div className="flex items-center gap-1">
                     <ArrowDownCircleIcon className="w-5 h-5 text-green-500" />
-                    <span className="text-lg font-bold text-green-600">{incomeExpense.income}₺</span>
+                    <span className="text-lg font-bold text-green-600">{showBalance ? incomeExpense.income.toFixed(2) + '₺' : '****'}</span>
                     <span className="text-xs text-gray-500">Income</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <ArrowUpCircleIcon className="w-5 h-5 text-red-500" />
-                    <span className="text-lg font-bold text-red-600">{incomeExpense.expense}₺</span>
+                    <span className="text-lg font-bold text-red-600">{showBalance ? incomeExpense.expense.toFixed(2) + '₺' : '****'}</span>
                     <span className="text-xs text-gray-500">Expense</span>
                   </div>
                 </div>
               </div>
-              <span className="text-4xl font-extrabold text-green-600 mb-2">{accountInfo.balance}</span>
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <span className="text-4xl font-extrabold text-green-600">
+                  {showBalance ? accountInfo.balance : '****'}
+                </span>
+                <button
+                  onClick={() => setShowBalance((prev) => !prev)}
+                  className="ml-2 p-1 rounded hover:bg-gray-200 transition-colors"
+                  title={showBalance ? 'Bakiyeyi Gizle' : 'Bakiyeyi Göster'}
+                >
+                  {showBalance ? (
+                    <EyeSlashIcon className="w-6 h-6 text-gray-500" />
+                  ) : (
+                    <EyeIcon className="w-6 h-6 text-gray-500" />
+                  )}
+                </button>
+              </div>
               <span className="text-md font-semibold text-gray-500 mb-4 bg-gray-100 px-3 py-1 rounded-full flex items-center gap-1">
                 <IdentificationIcon className="w-4 h-4 text-gray-400" />
                 {accountInfo.accountType}
