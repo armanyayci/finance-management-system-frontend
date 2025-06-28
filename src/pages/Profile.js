@@ -28,10 +28,10 @@ import {
   IdentificationIcon,
 } from "@heroicons/react/24/outline";
 import { UAParser } from "ua-parser-js";
-import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
-import DeleteIcon from '@mui/icons-material/Delete';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
+import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
+import DeleteIcon from "@mui/icons-material/Delete";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 
 const Profile = () => {
   const [userInfo, setUserInfo] = useState(null);
@@ -80,29 +80,44 @@ const Profile = () => {
   const [goalModalOpen, setGoalModalOpen] = useState(false);
   const [goalList, setGoalList] = useState([]);
   const [goalLoading, setGoalLoading] = useState(false);
-  const [goalForm, setGoalForm] = useState({ description: '', accountType: 'TRY', amount: '' });
+  const [goalForm, setGoalForm] = useState({
+    description: "",
+    accountType: "TRY",
+    amount: "",
+  });
   const [accountsModalOpen, setAccountsModalOpen] = useState(false);
   const [openAccountLoading, setOpenAccountLoading] = useState(false);
   const [openAccountConfirmOpen, setOpenAccountConfirmOpen] = useState(false);
   const [legalChecked, setLegalChecked] = useState(false);
-  const [pendingAccountType, setPendingAccountType] = useState('');
+  const [pendingAccountType, setPendingAccountType] = useState("");
+  const [totalBalanceTRY, setTotalBalanceTRY] = useState(null);
+  const [exchangeRates, setExchangeRates] = useState(null);
   // Kullanıcının sahip olduğu hesap tipleri (dinamik)
   const accountTypeOptions = Array.isArray(accountList)
-    ? accountList.map(acc => ({ value: acc.accountType, label: acc.accountType }))
+    ? accountList.map((acc) => ({
+        value: acc.accountType,
+        label: acc.accountType,
+      }))
     : [];
   const username = localStorage.getItem("username");
   const parser = new UAParser();
   const uaResult = parser.getResult();
-  // Kullanıcının sahip olmadığı accountType'lar (açılabilirler)
   const allAccountTypes = [
-    { value: 'TRY', label: 'TL Account' },
-    { value: 'USD', label: 'USD Account' },
-    { value: 'EUR', label: 'EUR Account' },
-    { value: 'ALTIN', label: 'Gold Account' },
+    { value: "TRY", label: "TL Account" },
+    { value: "USD", label: "USD Account" },
+    { value: "EUR", label: "EUR Account" },
+    { value: "ALTIN", label: "Gold Account" },
   ];
-  const availableAccountTypes = allAccountTypes.filter(
-    t => !accountList.some(acc => acc.accountType === t.value)
+  // Eğer kullanıcıda ALTIN veya AU hesabı varsa, ALTIN seçeneğini gizle
+  const hasGold = accountList.some(
+    (acc) => acc.accountType === "ALTIN" || acc.accountType === "AU"
   );
+  const availableAccountTypes = allAccountTypes.filter((t) => {
+    if (t.value === "ALTIN") {
+      return !hasGold;
+    }
+    return !accountList.some((acc) => acc.accountType === t.value);
+  });
 
   useEffect(() => {
     const fetchData = async () => {
@@ -117,9 +132,12 @@ const Profile = () => {
           email: user?.email || "",
         });
         const accountRes = await ApiService.GetAccountInfoByUsername(username);
-        let accArr = Array.isArray(accountRes) ? accountRes : (accountRes?.data || []);
+        let accArr = Array.isArray(accountRes)
+          ? accountRes
+          : accountRes?.data || [];
         setAccountList(accArr);
-        let mainAcc = accArr.find(acc => acc.accountType === 'TRY') || accArr[0] || null;
+        let mainAcc =
+          accArr.find((acc) => acc.accountType === "TRY") || accArr[0] || null;
         setAccountInfo(mainAcc);
         console.log("accountInfo:", mainAcc);
       } catch (e) {
@@ -131,6 +149,44 @@ const Profile = () => {
     };
     if (username) fetchData();
   }, [username]);
+
+  // Kur verilerini çek
+  useEffect(() => {
+    const fetchRates = async () => {
+      try {
+        const res = await fetch("https://finans.truncgil.com/today.json");
+        const data = await res.json();
+        setExchangeRates(data);
+      } catch (e) {
+        setExchangeRates(null);
+      }
+    };
+    fetchRates();
+  }, []);
+
+  // Hesapların toplamını TRY olarak hesapla
+  useEffect(() => {
+    if (!accountList || !exchangeRates) {
+      setTotalBalanceTRY(null);
+      return;
+    }
+    let total = 0;
+    accountList.forEach((acc) => {
+      let bal = Number(acc.balance) || 0;
+      if (acc.accountType === "TRY") total += bal;
+      else if (acc.accountType === "USD" && exchangeRates.USD)
+        total += bal * parseFloat(exchangeRates.USD.Satış.replace(",", "."));
+      else if (acc.accountType === "EUR" && exchangeRates.EUR)
+        total += bal * parseFloat(exchangeRates.EUR.Satış.replace(",", "."));
+      else if (
+        (acc.accountType === "ALTIN" || acc.accountType === "AU") &&
+        exchangeRates["gram-altin"]
+      )
+        total +=
+          bal * parseFloat(exchangeRates["gram-altin"].Satış.replace(",", "."));
+    });
+    setTotalBalanceTRY(total);
+  }, [accountList, exchangeRates]);
 
   const handleEdit = () => setEditMode(true);
   const handleCancel = () => {
@@ -253,18 +309,28 @@ const Profile = () => {
     e.preventDefault();
     if (!goalForm.amount || !goalForm.description) return;
     try {
-      const dto = [{
-        description: goalForm.description,
-        accountType: goalForm.accountType,
-        amount: goalForm.amount,
-        userId: userInfo.id,
-      }];
+      const dto = [
+        {
+          description: goalForm.description,
+          accountType: goalForm.accountType,
+          amount: goalForm.amount,
+          userId: userInfo.id,
+        },
+      ];
       const res = await ApiService.addGoal(dto);
-      setSnackbar({ open: true, message: res?.message || 'Goal added!', severity: 'success' });
-      setGoalForm({ description: '', accountType: 'TRY', amount: '' });
+      setSnackbar({
+        open: true,
+        message: res?.message || "Goal added!",
+        severity: "success",
+      });
+      setGoalForm({ description: "", accountType: "TRY", amount: "" });
       fetchGoals();
     } catch (e) {
-      setSnackbar({ open: true, message: e?.response?.data?.message || 'Goal add failed', severity: 'error' });
+      setSnackbar({
+        open: true,
+        message: e?.response?.data?.message || "Goal add failed",
+        severity: "error",
+      });
     }
   };
 
@@ -282,17 +348,30 @@ const Profile = () => {
     if (!userInfo?.id || !pendingAccountType) return;
     setOpenAccountLoading(true);
     try {
-      await ApiService.openAccount({ userId: userInfo.id, accountType: pendingAccountType });
-      setSnackbar({ open: true, message: 'Account opened successfully!', severity: 'success' });
+      await ApiService.openAccount({
+        userId: userInfo.id,
+        accountType: pendingAccountType,
+      });
+      setSnackbar({
+        open: true,
+        message: "Account opened successfully!",
+        severity: "success",
+      });
       // Hesaplar tekrar yüklensin
       const accountRes = await ApiService.GetAccountInfoByUsername(username);
-      let accArr = Array.isArray(accountRes) ? accountRes : (accountRes?.data || []);
+      let accArr = Array.isArray(accountRes)
+        ? accountRes
+        : accountRes?.data || [];
       setAccountList(accArr);
-      setNewAccountType('');
-      setPendingAccountType('');
+      setNewAccountType("");
+      setPendingAccountType("");
       setOpenAccountConfirmOpen(false);
     } catch (e) {
-      setSnackbar({ open: true, message: e?.response?.data?.message || 'Account could not be opened', severity: 'error' });
+      setSnackbar({
+        open: true,
+        message: e?.response?.data?.message || "Account could not be opened",
+        severity: "error",
+      });
     } finally {
       setOpenAccountLoading(false);
     }
@@ -305,7 +384,11 @@ const Profile = () => {
       const res = await ApiService.getGoals(userInfo.id);
       setGoalList(Array.isArray(res?.data) ? res.data : []);
     } catch (e) {
-      setSnackbar({ open: true, message: e?.response?.data?.message || 'Goals could not be loaded', severity: 'error' });
+      setSnackbar({
+        open: true,
+        message: e?.response?.data?.message || "Goals could not be loaded",
+        severity: "error",
+      });
     } finally {
       setGoalLoading(false);
     }
@@ -317,7 +400,7 @@ const Profile = () => {
   };
   const handleGoalModalClose = () => {
     setGoalModalOpen(false);
-    setGoalForm({ description: '', accountType: 'TRY', amount: '' });
+    setGoalForm({ description: "", accountType: "TRY", amount: "" });
   };
   const handleGoalFormChange = (e) => {
     setGoalForm({ ...goalForm, [e.target.name]: e.target.value });
@@ -325,10 +408,18 @@ const Profile = () => {
   const handleGoalDelete = async (goalId) => {
     try {
       const res = await ApiService.deleteGoal(goalId);
-      setSnackbar({ open: true, message: res?.message || 'Goal deleted!', severity: 'success' });
+      setSnackbar({
+        open: true,
+        message: res?.message || "Goal deleted!",
+        severity: "success",
+      });
       fetchGoals();
     } catch (e) {
-      setSnackbar({ open: true, message: e?.response?.data?.message || 'Goal delete failed', severity: 'error' });
+      setSnackbar({
+        open: true,
+        message: e?.response?.data?.message || "Goal delete failed",
+        severity: "error",
+      });
     }
   };
 
@@ -560,27 +651,192 @@ const Profile = () => {
                     <EnvelopeIcon className="w-4 h-4 text-indigo-400" />{" "}
                     {userInfo?.email}
                   </span>
-                  {Array.isArray(accountList) && accountList.length > 0 && (
-                    <>
-                      <span className="flex items-center gap-2">
-                        <IdentificationIcon className="w-4 h-4 text-indigo-400" />
-                        {accountList.map((acc, idx) => (
-                          <span key={acc.accountType} className="inline-block bg-blue-50 text-blue-700 rounded px-2 py-0.5 text-xs font-semibold mr-1">
-                            {acc.accountType}
-                            {idx < accountList.length - 1 && <span className="mx-1 text-gray-400">|</span>}
+                  {/* Hesap tipleri ve bakiyeleri kaldırıldı. Total Balance'a tooltip eklendi. */}
+                  {totalBalanceTRY !== null && (
+                    <Tooltip
+                      title={
+                        <div
+                          style={{
+                            minWidth: 220,
+                            background: "#f3f4f6",
+                            borderRadius: 12,
+                            boxShadow: "0 4px 24px 0 #0001",
+                            border: "1.5px solid #e0e7ef",
+                            padding: 10,
+                          }}
+                        >
+                          {Array.isArray(accountList) &&
+                          accountList.length > 0 ? (
+                            accountList.map((acc) => {
+                              let tryValue;
+                              if (
+                                acc.accountType === "USD" &&
+                                exchangeRates?.USD
+                              ) {
+                                tryValue =
+                                  (Number(acc.balance) || 0) *
+                                  parseFloat(
+                                    exchangeRates.USD.Satış.replace(",", ".")
+                                  );
+                              } else if (
+                                acc.accountType === "EUR" &&
+                                exchangeRates?.EUR
+                              ) {
+                                tryValue =
+                                  (Number(acc.balance) || 0) *
+                                  parseFloat(
+                                    exchangeRates.EUR.Satış.replace(",", ".")
+                                  );
+                              } else if (
+                                (acc.accountType === "ALTIN" ||
+                                  acc.accountType === "AU") &&
+                                exchangeRates?.["gram-altin"]
+                              ) {
+                                tryValue =
+                                  (Number(acc.balance) || 0) *
+                                  parseFloat(
+                                    exchangeRates["gram-altin"].Satış.replace(
+                                      ",",
+                                      "."
+                                    )
+                                  );
+                              } else if (acc.accountType === "TRY") {
+                                tryValue = Number(acc.balance) || 0;
+                              }
+                              let icon = null;
+                              let unit = acc.accountType;
+                              if (
+                                acc.accountType === "USD" &&
+                                exchangeRates?.USD
+                              ) {
+                                icon = "💵";
+                              } else if (
+                                acc.accountType === "EUR" &&
+                                exchangeRates?.EUR
+                              ) {
+                                icon = "💶";
+                              } else if (
+                                (acc.accountType === "ALTIN" ||
+                                  acc.accountType === "AU") &&
+                                exchangeRates?.["gram-altin"]
+                              ) {
+                                icon = "🥇";
+                                unit = "AU";
+                              } else if (acc.accountType === "TRY") {
+                                icon = "₺";
+                              }
+                              return (
+                                <div
+                                  key={acc.accountType}
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 12,
+                                    marginBottom: 8,
+                                    background: "#fff",
+                                    borderRadius: 8,
+                                    boxShadow: "0 2px 8px 0 #0001",
+                                    padding: "8px 14px",
+                                    border: "1px solid #e5e7eb",
+                                  }}
+                                >
+                                  <span
+                                    style={{ fontSize: 26, marginRight: 4 }}
+                                  >
+                                    {icon}
+                                  </span>
+                                  <span
+                                    style={{
+                                      fontWeight: 700,
+                                      color: "#1e293b",
+                                      fontSize: 16,
+                                      minWidth: 90,
+                                    }}
+                                  >
+                                    {Number(acc.balance).toLocaleString(
+                                      "en-US",
+                                      { minimumFractionDigits: 2 }
+                                    )}{" "}
+                                    {unit}
+                                  </span>
+                                  {(acc.accountType === "USD" ||
+                                    acc.accountType === "EUR" ||
+                                    acc.accountType === "ALTIN" ||
+                                    acc.accountType === "AU") && (
+                                    <span
+                                      style={{
+                                        color: "#059669",
+                                        fontWeight: 700,
+                                        fontSize: 15,
+                                        minWidth: 90,
+                                        textAlign: "right",
+                                      }}
+                                    >
+                                      ≈{" "}
+                                      {tryValue.toLocaleString("en-US", {
+                                        minimumFractionDigits: 2,
+                                      })}{" "}
+                                      ₺
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            })
+                          ) : (
+                            <span style={{ color: "#64748b", fontWeight: 500 }}>
+                              No account data
+                            </span>
+                          )}
+                        </div>
+                      }
+                      arrow
+                      placement="bottom"
+                      componentsProps={{
+                        tooltip: {
+                          sx: {
+                            backgroundColor: "#f3f4f6",
+                            border: "1.5px solid #e0e7ef",
+                            boxShadow: "0 4px 24px 0 #0001",
+                            borderRadius: "12px",
+                            color: "#1e293b",
+                            padding: 0,
+                          },
+                        },
+                        arrow: {
+                          sx: {
+                            color: "#f3f4f6",
+                          },
+                        },
+                      }}
+                    >
+                      <span
+                        className="flex items-center justify-between w-full max-w-xs md:max-w-sm text-green-700 bg-green-100 rounded-xl px-4 py-2 mb-1 mt-5 cursor-pointer shadow-lg border border-green-200 hover:bg-green-200 transition-colors"
+                        style={{ minWidth: 0, letterSpacing: 0.5 }}
+                      >
+                        <span className="flex items-center gap-2 min-w-0">
+                          <LockClosedIcon className="w-6 h-6 text-green-600 flex-shrink-0" />
+                          <span
+                            className="text-2xl font-bold truncate"
+                            style={{ minWidth: 0 }}
+                          >
+                            {totalBalanceTRY.toLocaleString("en-US", {
+                              minimumFractionDigits: 2,
+                            })}
                           </span>
-                        ))}
-                      </span>
-                      <span className="flex items-center gap-2 flex-wrap mt-1">
-                        <LockClosedIcon className="w-4 h-4 text-indigo-400" />
-                        {accountList.map((acc, idx) => (
-                          <span key={acc.accountType + '-bal'} className="inline-block bg-green-50 text-green-700 rounded px-2 py-0.5 text-xs font-semibold mr-1">
-                            {acc.balance?.toLocaleString("en-US", { minimumFractionDigits: 2 })} {acc.accountType}
-                            {idx < accountList.length - 1 && <span className="mx-1 text-gray-400">|</span>}
+                          <span className="text-xl font-bold flex-shrink-0">
+                            ₺
                           </span>
-                        ))}
+                        </span>
+                        <span className="flex flex-col items-end ml-2 min-w-[60px]">
+                          <span className="text-sm font-semibold text-gray-600 leading-tight">
+                            Total
+                          </span>
+                          <span className="text-sm font-semibold text-gray-600 leading-tight">
+                            Balance
+                          </span>
+                        </span>
                       </span>
-                    </>
+                    </Tooltip>
                   )}
                 </div>
               </div>
@@ -605,8 +861,8 @@ const Profile = () => {
                   </li>
                   <li>
                     2FA:{" "}
-                    <span className="font-semibold text-green-600">
-                      Enabled
+                    <span className={`font-semibold ${notifications.email ? "text-green-600" : "text-red-600"}`}>
+                      {notifications.email ? "Enabled" : "Disabled"}
                     </span>
                   </li>
                   <li>
@@ -726,26 +982,6 @@ const Profile = () => {
                     />{" "}
                     E-Mail Notifications
                   </label>
-                  <label className="flex items-center gap-2 text-base">
-                    <input
-                      type="checkbox"
-                      name="sms"
-                      checked={notifications.sms}
-                      onChange={handleNotifChange}
-                      className="accent-blue-600 w-5 h-5"
-                    />{" "}
-                    SMS Notifications
-                  </label>
-                  <label className="flex items-center gap-2 text-base">
-                    <input
-                      type="checkbox"
-                      name="inApp"
-                      checked={notifications.inApp}
-                      onChange={handleNotifChange}
-                      className="accent-blue-600 w-5 h-5"
-                    />{" "}
-                    In-App Notifications
-                  </label>
                 </div>
               </div>
               {/* Finansal Hedefler Butonu */}
@@ -761,15 +997,36 @@ const Profile = () => {
                 </Button>
               </div>
               {/* Financial Goals Modal */}
-              <Dialog open={goalModalOpen} onClose={handleGoalModalClose} maxWidth="sm" fullWidth>
-                <DialogTitle sx={{ fontWeight: 800, color: 'primary.main', fontSize: 24, pb: 1 }}>
+              <Dialog
+                open={goalModalOpen}
+                onClose={handleGoalModalClose}
+                maxWidth="sm"
+                fullWidth
+              >
+                <DialogTitle
+                  sx={{
+                    fontWeight: 800,
+                    color: "primary.main",
+                    fontSize: 24,
+                    pb: 1,
+                  }}
+                >
                   <Box display="flex" alignItems="center" gap={1}>
                     <AddCircleOutlineIcon color="primary" />
                     Financial Goals
                   </Box>
                 </DialogTitle>
-                <DialogContent dividers sx={{ bgcolor: '#f8fafc' }}>
-                  <form onSubmit={handleGoalAdd} style={{ display: 'flex', gap: 12, marginBottom: 18, alignItems: 'center', flexWrap: 'wrap' }}>
+                <DialogContent dividers sx={{ bgcolor: "#f8fafc" }}>
+                  <form
+                    onSubmit={handleGoalAdd}
+                    style={{
+                      display: "flex",
+                      gap: 12,
+                      marginBottom: 18,
+                      alignItems: "center",
+                      flexWrap: "wrap",
+                    }}
+                  >
                     <TextField
                       label="Description"
                       name="description"
@@ -799,47 +1056,114 @@ const Profile = () => {
                       displayEmpty
                     >
                       {accountTypeOptions.length === 0 && (
-                        <MenuItem value="" disabled>No account found</MenuItem>
+                        <MenuItem value="" disabled>
+                          No account found
+                        </MenuItem>
                       )}
-                      {accountTypeOptions.map(opt => (
-                        <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+                      {accountTypeOptions.map((opt) => (
+                        <MenuItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </MenuItem>
                       ))}
                     </Select>
-                    <Button type="submit" variant="contained" color="primary" sx={{ fontWeight: 700, borderRadius: 2 }}>
+                    <Button
+                      type="submit"
+                      variant="contained"
+                      color="primary"
+                      sx={{ fontWeight: 700, borderRadius: 2 }}
+                    >
                       Add
                     </Button>
                   </form>
                   <Box sx={{ minHeight: 120 }}>
                     {goalLoading ? (
-                      <Box display="flex" justifyContent="center" alignItems="center" minHeight={80}><CircularProgress /></Box>
+                      <Box
+                        display="flex"
+                        justifyContent="center"
+                        alignItems="center"
+                        minHeight={80}
+                      >
+                        <CircularProgress />
+                      </Box>
                     ) : goalList.length === 0 ? (
-                      <Typography color="text.secondary" align="center" sx={{ mt: 2 }}>No goals set yet.</Typography>
+                      <Typography
+                        color="text.secondary"
+                        align="center"
+                        sx={{ mt: 2 }}
+                      >
+                        No goals set yet.
+                      </Typography>
                     ) : (
                       <Box>
-                        {goalList.map(goal => {
+                        {goalList.map((goal) => {
                           // Hedefin accountType'ına göre ilgili hesabı bul
                           let userBalance = 0;
                           if (Array.isArray(accountList)) {
-                            const acc = accountList.find(a => a.accountType === goal.accountType);
+                            const acc = accountList.find(
+                              (a) => a.accountType === goal.accountType
+                            );
                             userBalance = acc ? acc.balance : 0;
-                          } else if (accountInfo && accountInfo.accountType === goal.accountType) {
+                          } else if (
+                            accountInfo &&
+                            accountInfo.accountType === goal.accountType
+                          ) {
                             userBalance = accountInfo.balance;
                           }
-                          const isGoalReached = Number(userBalance) >= Number(goal.amount);
+                          const isGoalReached =
+                            Number(userBalance) >= Number(goal.amount);
                           return (
-                            <Box key={goal.id} display="flex" alignItems="center" justifyContent="space-between" p={1.2} mb={1} borderRadius={2} bgcolor={isGoalReached ? '#d1fae5' : '#fff'} boxShadow={1}>
+                            <Box
+                              key={goal.id}
+                              display="flex"
+                              alignItems="center"
+                              justifyContent="space-between"
+                              p={1.2}
+                              mb={1}
+                              borderRadius={2}
+                              bgcolor={isGoalReached ? "#d1fae5" : "#fff"}
+                              boxShadow={1}
+                            >
                               <Box display="flex" alignItems="center" gap={1}>
-                                <Typography fontWeight={700} color={isGoalReached ? 'success.main' : 'primary.main'}>
+                                <Typography
+                                  fontWeight={700}
+                                  color={
+                                    isGoalReached
+                                      ? "success.main"
+                                      : "primary.main"
+                                  }
+                                >
                                   {goal.description}
                                 </Typography>
-                                {isGoalReached && <CheckCircleIcon color="success" fontSize="small" />}
+                                {isGoalReached && (
+                                  <CheckCircleIcon
+                                    color="success"
+                                    fontSize="small"
+                                  />
+                                )}
                               </Box>
                               <Box>
-                                <Typography variant="body2" color="text.secondary">{goal.amount} ₺ - {goal.accountType}</Typography>
-                                <Typography variant="caption" color="text.disabled">{goal.createdAt ? new Date(goal.createdAt).toLocaleDateString() : ''}</Typography>
+                                <Typography
+                                  variant="body2"
+                                  color="text.secondary"
+                                >
+                                  {goal.amount} - {goal.accountType}
+                                </Typography>
+                                <Typography
+                                  variant="caption"
+                                  color="text.disabled"
+                                >
+                                  {goal.createdAt
+                                    ? new Date(
+                                        goal.createdAt
+                                      ).toLocaleDateString()
+                                    : ""}
+                                </Typography>
                               </Box>
                               <Tooltip title="Delete Goal">
-                                <IconButton color="error" onClick={() => handleGoalDelete(goal.id)}>
+                                <IconButton
+                                  color="error"
+                                  onClick={() => handleGoalDelete(goal.id)}
+                                >
                                   <DeleteIcon />
                                 </IconButton>
                               </Tooltip>
@@ -851,7 +1175,14 @@ const Profile = () => {
                   </Box>
                 </DialogContent>
                 <DialogActions>
-                  <Button onClick={handleGoalModalClose} color="secondary" variant="outlined" sx={{ fontWeight: 700, borderRadius: 2 }}>Close</Button>
+                  <Button
+                    onClick={handleGoalModalClose}
+                    color="secondary"
+                    variant="outlined"
+                    sx={{ fontWeight: 700, borderRadius: 2 }}
+                  >
+                    Close
+                  </Button>
                 </DialogActions>
               </Dialog>
               {/* Hesap Açma Sekmesi */}
@@ -866,77 +1197,205 @@ const Profile = () => {
                   Accounts
                 </Button>
                 {/* Hesaplarım Modal */}
-                <Dialog open={accountsModalOpen} onClose={handleAccountsModalClose} maxWidth="xs" fullWidth>
-                  <DialogTitle sx={{ fontWeight: 800, color: 'primary.main', fontSize: 22, pb: 1 }}>
+                <Dialog
+                  open={accountsModalOpen}
+                  onClose={handleAccountsModalClose}
+                  maxWidth="xs"
+                  fullWidth
+                >
+                  <DialogTitle
+                    sx={{
+                      fontWeight: 800,
+                      color: "primary.main",
+                      fontSize: 22,
+                      pb: 1,
+                    }}
+                  >
                     <Box display="flex" alignItems="center" gap={1}>
                       <AccountBalanceWalletIcon color="primary" />
                       Accounts
                     </Box>
                   </DialogTitle>
-                  <DialogContent dividers sx={{ bgcolor: '#f8fafc' }}>
+                  <DialogContent dividers sx={{ bgcolor: "#f8fafc" }}>
                     {/* Yeni hesap açma alanı */}
-                    <form onSubmit={handleOpenAccount} style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 18 }}>
+                    <form
+                      onSubmit={handleOpenAccount}
+                      style={{
+                        display: "flex",
+                        gap: 10,
+                        alignItems: "center",
+                        marginBottom: 18,
+                      }}
+                    >
                       <Select
                         value={newAccountType}
-                        onChange={e => setNewAccountType(e.target.value)}
+                        onChange={(e) => setNewAccountType(e.target.value)}
                         displayEmpty
                         size="small"
                         sx={{ minWidth: 120 }}
-                        disabled={openAccountLoading || availableAccountTypes.length === 0}
+                        disabled={
+                          openAccountLoading ||
+                          availableAccountTypes.length === 0
+                        }
                       >
-                        <MenuItem value="" disabled>Select account type</MenuItem>
-                        {availableAccountTypes.map(opt => (
-                          <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+                        <MenuItem value="" disabled>
+                          Select account type
+                        </MenuItem>
+                        {availableAccountTypes.map((opt) => (
+                          <MenuItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </MenuItem>
                         ))}
                       </Select>
-                      <Button type="submit" variant="contained" color="primary" disabled={!newAccountType || openAccountLoading || availableAccountTypes.length === 0} sx={{ fontWeight: 700, borderRadius: 2 }}>
+                      <Button
+                        type="submit"
+                        variant="contained"
+                        color="primary"
+                        disabled={
+                          !newAccountType ||
+                          openAccountLoading ||
+                          availableAccountTypes.length === 0
+                        }
+                        sx={{ fontWeight: 700, borderRadius: 2 }}
+                      >
                         Open Account
                       </Button>
                     </form>
                     {/* Hesap açma onay modalı */}
-                    <Dialog open={openAccountConfirmOpen} onClose={() => setOpenAccountConfirmOpen(false)} maxWidth="xs" fullWidth>
-                      <DialogTitle sx={{ fontWeight: 700, color: 'primary.main', fontSize: 20 }}>Account Opening Terms</DialogTitle>
-                      <DialogContent dividers sx={{ bgcolor: '#f8fafc' }}>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                          By opening a new account, you agree to the following terms and conditions:<br /><br />
-                          - You are solely responsible for all transactions made from this account.<br />
-                          - The bank may request additional information or documents if necessary.<br />
-                          - You agree to comply with all applicable laws and regulations.<br />
-                          - The bank reserves the right to suspend or close the account in case of suspicious activity.<br /><br />
-                          Please read the full terms and conditions before proceeding.
+                    <Dialog
+                      open={openAccountConfirmOpen}
+                      onClose={() => setOpenAccountConfirmOpen(false)}
+                      maxWidth="xs"
+                      fullWidth
+                    >
+                      <DialogTitle
+                        sx={{
+                          fontWeight: 700,
+                          color: "primary.main",
+                          fontSize: 20,
+                        }}
+                      >
+                        Account Opening Terms
+                      </DialogTitle>
+                      <DialogContent dividers sx={{ bgcolor: "#f8fafc" }}>
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          sx={{ mb: 2 }}
+                        >
+                          By opening a new account, you agree to the following
+                          terms and conditions:
+                          <br />
+                          <br />
+                          - You are solely responsible for all transactions made
+                          from this account.
+                          <br />
+                          - The bank may request additional information or
+                          documents if necessary.
+                          <br />
+                          - You agree to comply with all applicable laws and
+                          regulations.
+                          <br />
+                          - The bank reserves the right to suspend or close the
+                          account in case of suspicious activity.
+                          <br />
+                          <br />
+                          Please read the full terms and conditions before
+                          proceeding.
                         </Typography>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
-                          <input type="checkbox" checked={legalChecked} onChange={e => setLegalChecked(e.target.checked)} />
-                          <span>I have read and accept the terms and conditions.</span>
+                        <label
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            marginTop: 8,
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={legalChecked}
+                            onChange={(e) => setLegalChecked(e.target.checked)}
+                          />
+                          <span>
+                            I have read and accept the terms and conditions.
+                          </span>
                         </label>
                       </DialogContent>
                       <DialogActions>
-                        <Button onClick={() => setOpenAccountConfirmOpen(false)} color="secondary" variant="outlined">Cancel</Button>
-                        <Button onClick={handleConfirmOpenAccount} color="primary" variant="contained" disabled={!legalChecked || openAccountLoading}>
-                          {openAccountLoading ? <CircularProgress size={18} /> : 'Confirm & Open Account'}
+                        <Button
+                          onClick={() => setOpenAccountConfirmOpen(false)}
+                          color="secondary"
+                          variant="outlined"
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={handleConfirmOpenAccount}
+                          color="primary"
+                          variant="contained"
+                          disabled={!legalChecked || openAccountLoading}
+                        >
+                          {openAccountLoading ? (
+                            <CircularProgress size={18} />
+                          ) : (
+                            "Confirm & Open Account"
+                          )}
                         </Button>
                       </DialogActions>
                     </Dialog>
                     {/* Hesaplar listesi */}
                     {Array.isArray(accountList) && accountList.length > 0 ? (
                       <Box>
-                        {accountList.map(acc => (
-                          <Box key={acc.accountType} display="flex" alignItems="center" justifyContent="space-between" p={1.2} mb={1} borderRadius={2} bgcolor="#fff" boxShadow={1}>
+                        {accountList.map((acc) => (
+                          <Box
+                            key={acc.accountType}
+                            display="flex"
+                            alignItems="center"
+                            justifyContent="space-between"
+                            p={1.2}
+                            mb={1}
+                            borderRadius={2}
+                            bgcolor="#fff"
+                            boxShadow={1}
+                          >
                             <Box display="flex" alignItems="center" gap={1}>
-                              <Typography fontWeight={700} color="primary.main">{acc.accountType}</Typography>
+                              <Typography fontWeight={700} color="primary.main">
+                                {acc.accountType}
+                              </Typography>
                             </Box>
                             <Box>
-                              <Typography variant="body2" color="text.secondary">{acc.balance?.toLocaleString("en-US", { minimumFractionDigits: 2 })} {acc.accountType}</Typography>
+                              <Typography
+                                variant="body2"
+                                color="text.secondary"
+                              >
+                                {acc.balance?.toLocaleString("en-US", {
+                                  minimumFractionDigits: 2,
+                                })}{" "}
+                                {acc.accountType}
+                              </Typography>
                             </Box>
                           </Box>
                         ))}
                       </Box>
                     ) : (
-                      <Typography color="text.secondary" align="center" sx={{ mt: 2 }}>No accounts found.</Typography>
+                      <Typography
+                        color="text.secondary"
+                        align="center"
+                        sx={{ mt: 2 }}
+                      >
+                        No accounts found.
+                      </Typography>
                     )}
                   </DialogContent>
                   <DialogActions>
-                    <Button onClick={handleAccountsModalClose} color="secondary" variant="outlined" sx={{ fontWeight: 700, borderRadius: 2 }}>Close</Button>
+                    <Button
+                      onClick={handleAccountsModalClose}
+                      color="secondary"
+                      variant="outlined"
+                      sx={{ fontWeight: 700, borderRadius: 2 }}
+                    >
+                      Close
+                    </Button>
                   </DialogActions>
                 </Dialog>
               </div>
@@ -1060,4 +1519,3 @@ const Profile = () => {
 };
 
 export default Profile;
-  
