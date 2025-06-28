@@ -1,45 +1,127 @@
-import React, { useEffect, useState } from 'react';
-import ApiService from '../components/service/ApiService';
-import Sidebar from '../components/Sidebar';
-import { Avatar, Button, TextField, Paper, Divider, CircularProgress, Snackbar, Alert } from '@mui/material';
-import { UserCircleIcon, LockClosedIcon, EnvelopeIcon, IdentificationIcon } from '@heroicons/react/24/outline';
+import React, { useEffect, useState } from "react";
+import ApiService from "../components/service/ApiService";
+import Sidebar from "../components/Sidebar";
+import {
+  Avatar,
+  Button,
+  TextField,
+  Paper,
+  Divider,
+  CircularProgress,
+  Snackbar,
+  Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  IconButton,
+  Typography,
+  Box,
+  Tooltip,
+  Select,
+  MenuItem,
+} from "@mui/material";
+import {
+  UserCircleIcon,
+  LockClosedIcon,
+  EnvelopeIcon,
+  IdentificationIcon,
+} from "@heroicons/react/24/outline";
+import { UAParser } from "ua-parser-js";
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import DeleteIcon from '@mui/icons-material/Delete';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 
 const Profile = () => {
   const [userInfo, setUserInfo] = useState(null);
   const [accountInfo, setAccountInfo] = useState(null);
+  const [accountList, setAccountList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
-  const [form, setForm] = useState({ firstname: '', lastname: '', email: '' });
-  const [passwordForm, setPasswordForm] = useState({ oldPassword: '', newPassword: '', confirmPassword: '' });
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const [form, setForm] = useState({ firstname: "", lastname: "", email: "" });
+  const [passwordForm, setPasswordForm] = useState({
+    oldPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success",
+  });
   const [avatar, setAvatar] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
-  const [notifications, setNotifications] = useState({ email: true, sms: false, inApp: true });
-  const [goal, setGoal] = useState({ amount: '', desc: '' });
+  const [notifications, setNotifications] = useState({
+    email: true,
+    sms: false,
+    inApp: true,
+  });
+  const [goal, setGoal] = useState({ amount: "", desc: "" });
   const [goals, setGoals] = useState([]);
   const [sessions] = useState([
-    { id: 1, device: 'Chrome (Windows)', ip: '192.168.1.2', lastActive: 'Now', current: true },
-    { id: 2, device: 'iPhone', ip: '192.168.1.3', lastActive: '2 hours ago', current: false },
+    {
+      id: 1,
+      device: "Chrome (Windows)",
+      ip: "192.168.1.2",
+      lastActive: "Now",
+      current: true,
+    },
+    {
+      id: 2,
+      device: "iPhone",
+      ip: "192.168.1.3",
+      lastActive: "2 hours ago",
+      current: false,
+    },
   ]);
-  const [newAccountType, setNewAccountType] = useState('TL');
-  const [accountOpenMsg, setAccountOpenMsg] = useState('');
-
-  const username = localStorage.getItem('username');
+  const [newAccountType, setNewAccountType] = useState("");
+  const [accountOpenMsg, setAccountOpenMsg] = useState("");
+  const [goalModalOpen, setGoalModalOpen] = useState(false);
+  const [goalList, setGoalList] = useState([]);
+  const [goalLoading, setGoalLoading] = useState(false);
+  const [goalForm, setGoalForm] = useState({ description: '', accountType: 'TRY', amount: '' });
+  const [accountsModalOpen, setAccountsModalOpen] = useState(false);
+  const [openAccountLoading, setOpenAccountLoading] = useState(false);
+  const [openAccountConfirmOpen, setOpenAccountConfirmOpen] = useState(false);
+  const [legalChecked, setLegalChecked] = useState(false);
+  const [pendingAccountType, setPendingAccountType] = useState('');
+  // Kullanıcının sahip olduğu hesap tipleri (dinamik)
+  const accountTypeOptions = Array.isArray(accountList)
+    ? accountList.map(acc => ({ value: acc.accountType, label: acc.accountType }))
+    : [];
+  const username = localStorage.getItem("username");
+  const parser = new UAParser();
+  const uaResult = parser.getResult();
+  // Kullanıcının sahip olmadığı accountType'lar (açılabilirler)
+  const allAccountTypes = [
+    { value: 'TRY', label: 'TL Account' },
+    { value: 'USD', label: 'USD Account' },
+    { value: 'EUR', label: 'EUR Account' },
+    { value: 'ALTIN', label: 'Gold Account' },
+  ];
+  const availableAccountTypes = allAccountTypes.filter(
+    t => !accountList.some(acc => acc.accountType === t.value)
+  );
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
         const usersRes = await ApiService.GetAllUsers();
-        const user = usersRes.find(u => u.username === username);
+        const user = usersRes.find((u) => u.username === username);
         setUserInfo(user);
         setForm({
-          firstname: user?.firstname || '',
-          lastname: user?.lastname || '',
-          email: user?.email || '',
+          firstname: user?.firstName || "",
+          lastname: user?.lastName || "",
+          email: user?.email || "",
         });
         const accountRes = await ApiService.GetAccountInfoByUsername(username);
-        setAccountInfo(accountRes.data);
+        let accArr = Array.isArray(accountRes) ? accountRes : (accountRes?.data || []);
+        setAccountList(accArr);
+        let mainAcc = accArr.find(acc => acc.accountType === 'TRY') || accArr[0] || null;
+        setAccountInfo(mainAcc);
+        console.log("accountInfo:", mainAcc);
       } catch (e) {
         setUserInfo(null);
         setAccountInfo(null);
@@ -54,58 +136,212 @@ const Profile = () => {
   const handleCancel = () => {
     setEditMode(false);
     setForm({
-      firstname: userInfo?.firstname || '',
-      lastname: userInfo?.lastname || '',
-      email: userInfo?.email || '',
+      firstname: userInfo?.firstName || "",
+      lastname: userInfo?.lastName || "",
+      email: userInfo?.email || "",
     });
   };
-  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
-  const handlePasswordChange = (e) => setPasswordForm({ ...passwordForm, [e.target.name]: e.target.value });
+  const handleChange = (e) =>
+    setForm({ ...form, [e.target.name]: e.target.value });
+  const handlePasswordChange = (e) =>
+    setPasswordForm({ ...passwordForm, [e.target.name]: e.target.value });
 
   const handleSave = async () => {
-    // Burada güncelleme API isteği yapılabilir
-    setSnackbar({ open: true, message: 'Profile updated successfully!', severity: 'success' });
+    // Örnek güncelleme API isteği (mock)
+    try {
+      // const response = await ApiService.updateUserProfile({ ...form, username: userInfo.username });
+      // setSnackbar({ open: true, message: response?.message || 'Profile updated successfully!', severity: 'success' });
+      setSnackbar({
+        open: true,
+        message: "Profile updated successfully!",
+        severity: "success",
+      });
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message:
+          error?.response?.data?.message ||
+          error?.message ||
+          "Profile update failed!",
+        severity: "error",
+      });
+    }
     setEditMode(false);
   };
 
   const handlePasswordSubmit = async (e) => {
     e.preventDefault();
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      setSnackbar({ open: true, message: 'Passwords do not match!', severity: 'error' });
+      setSnackbar({
+        open: true,
+        message: "Passwords do not match!",
+        severity: "error",
+      });
       return;
     }
-    // Burada şifre güncelleme API isteği yapılabilir
-    setSnackbar({ open: true, message: 'Password changed successfully!', severity: 'success' });
-    setPasswordForm({ oldPassword: '', newPassword: '', confirmPassword: '' });
+    if (!userInfo?.id) {
+      setSnackbar({
+        open: true,
+        message: "User info not loaded!",
+        severity: "error",
+      });
+      return;
+    }
+    try {
+      const dto = {
+        userId: userInfo.id,
+        oldPassword: passwordForm.oldPassword,
+        newPassword: passwordForm.newPassword,
+      };
+      const result = await ApiService.changePassword(dto);
+      setSnackbar({
+        open: true,
+        message:
+          result?.message ||
+          (typeof result === "string"
+            ? result
+            : "Password changed successfully!"),
+        severity: "success",
+      });
+      setPasswordForm({
+        oldPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message:
+          error?.response?.data?.message ||
+          error?.message ||
+          "Password change failed!",
+        severity: "error",
+      });
+    }
   };
 
-  const handleAvatarChange = (e) => {
+  const handleAvatarChange = async (e) => {
     const file = e.target.files[0];
-    if (file) {
+    if (file && userInfo?.id) {
       setAvatar(file);
       setAvatarPreview(URL.createObjectURL(file));
-      setSnackbar({ open: true, message: 'Avatar updated (mock)', severity: 'success' });
-      // API ile yükleme fonksiyonu burada olacak
+      try {
+        const response = await ApiService.uploadProfileImage(userInfo.id, file);
+        setSnackbar({
+          open: true,
+          message: response?.message || "Profile image updated!",
+          severity: "success",
+        });
+        setTimeout(() => window.location.reload(), 800);
+      } catch (error) {
+        setSnackbar({
+          open: true,
+          message:
+            error?.response?.data?.message ||
+            error?.message ||
+            "Profile image upload failed!",
+          severity: "error",
+        });
+      }
     }
   };
 
-  const handleNotifChange = (e) => setNotifications({ ...notifications, [e.target.name]: e.target.checked });
+  const handleNotifChange = (e) =>
+    setNotifications({ ...notifications, [e.target.name]: e.target.checked });
 
-  const handleGoalAdd = (e) => {
+  const handleGoalAdd = async (e) => {
     e.preventDefault();
-    if (goal.amount && goal.desc) {
-      setGoals([...goals, { ...goal, id: Date.now() }]);
-      setGoal({ amount: '', desc: '' });
-      setSnackbar({ open: true, message: 'Goal added (mock)', severity: 'success' });
-      // API ile ekleme fonksiyonu burada olacak
+    if (!goalForm.amount || !goalForm.description) return;
+    try {
+      const dto = [{
+        description: goalForm.description,
+        accountType: goalForm.accountType,
+        amount: goalForm.amount,
+        userId: userInfo.id,
+      }];
+      const res = await ApiService.addGoal(dto);
+      setSnackbar({ open: true, message: res?.message || 'Goal added!', severity: 'success' });
+      setGoalForm({ description: '', accountType: 'TRY', amount: '' });
+      fetchGoals();
+    } catch (e) {
+      setSnackbar({ open: true, message: e?.response?.data?.message || 'Goal add failed', severity: 'error' });
     }
   };
 
+  // Hesap açma butonuna tıklayınca onay modalı aç
   const handleOpenAccount = (e) => {
     e.preventDefault();
-    setAccountOpenMsg(`${newAccountType} hesabı başarıyla açıldı! (mock)`);
-    setTimeout(() => setAccountOpenMsg(''), 2500);
-    // API ile hesap açma fonksiyonu burada olacak
+    if (!newAccountType) return;
+    setPendingAccountType(newAccountType);
+    setLegalChecked(false);
+    setOpenAccountConfirmOpen(true);
+  };
+
+  // Onay modalında gerçekten hesabı aç
+  const handleConfirmOpenAccount = async () => {
+    if (!userInfo?.id || !pendingAccountType) return;
+    setOpenAccountLoading(true);
+    try {
+      await ApiService.openAccount({ userId: userInfo.id, accountType: pendingAccountType });
+      setSnackbar({ open: true, message: 'Account opened successfully!', severity: 'success' });
+      // Hesaplar tekrar yüklensin
+      const accountRes = await ApiService.GetAccountInfoByUsername(username);
+      let accArr = Array.isArray(accountRes) ? accountRes : (accountRes?.data || []);
+      setAccountList(accArr);
+      setNewAccountType('');
+      setPendingAccountType('');
+      setOpenAccountConfirmOpen(false);
+    } catch (e) {
+      setSnackbar({ open: true, message: e?.response?.data?.message || 'Account could not be opened', severity: 'error' });
+    } finally {
+      setOpenAccountLoading(false);
+    }
+  };
+
+  const fetchGoals = async () => {
+    if (!userInfo?.id) return;
+    setGoalLoading(true);
+    try {
+      const res = await ApiService.getGoals(userInfo.id);
+      setGoalList(Array.isArray(res?.data) ? res.data : []);
+    } catch (e) {
+      setSnackbar({ open: true, message: e?.response?.data?.message || 'Goals could not be loaded', severity: 'error' });
+    } finally {
+      setGoalLoading(false);
+    }
+  };
+
+  const handleGoalModalOpen = () => {
+    setGoalModalOpen(true);
+    fetchGoals();
+  };
+  const handleGoalModalClose = () => {
+    setGoalModalOpen(false);
+    setGoalForm({ description: '', accountType: 'TRY', amount: '' });
+  };
+  const handleGoalFormChange = (e) => {
+    setGoalForm({ ...goalForm, [e.target.name]: e.target.value });
+  };
+  const handleGoalDelete = async (goalId) => {
+    try {
+      const res = await ApiService.deleteGoal(goalId);
+      setSnackbar({ open: true, message: res?.message || 'Goal deleted!', severity: 'success' });
+      fetchGoals();
+    } catch (e) {
+      setSnackbar({ open: true, message: e?.response?.data?.message || 'Goal delete failed', severity: 'error' });
+    }
+  };
+
+  const handleAccountsModalOpen = () => setAccountsModalOpen(true);
+  const handleAccountsModalClose = () => setAccountsModalOpen(false);
+
+  // Kullanıcı image verisini base64'e çeviren yardımcı fonksiyon
+  const getUserImageSrc = () => {
+    if (userInfo?.image) {
+      // image byte array ise base64 stringe çevir
+      return `data:image/jpeg;base64,${userInfo.image}`;
+    }
+    return avatarPreview || undefined;
   };
 
   return (
@@ -124,50 +360,99 @@ const Profile = () => {
           filter: "drop-shadow(0 8px 32px #38bdf8aa) blur(1.5px)",
           transform: "scaleX(-1) rotate(-8deg)",
           objectFit: "cover",
-          objectPosition: "bottom right"
+          objectPosition: "bottom right",
         }}
       />
       {/* Deniz temalı animasyonlu arka plan SVG'leri */}
       <div className="absolute z-0 pointer-events-none w-full h-full">
         {/* Yunus balığı SVG */}
-        <svg className="absolute left-1/2 top-10 -translate-x-1/2 animate-dolphin-float" width="420" height="220" viewBox="0 0 420 220" fill="none" style={{zIndex:0, opacity:0.18}}>
+        <svg
+          className="absolute left-1/2 top-10 -translate-x-1/2 animate-dolphin-float"
+          width="420"
+          height="220"
+          viewBox="0 0 420 220"
+          fill="none"
+          style={{ zIndex: 0, opacity: 0.18 }}
+        >
           <g>
-            <path d="M60 180 Q120 80 260 120 Q320 140 400 60 Q380 120 320 180 Q220 240 120 200 Q80 190 60 180 Z" fill="#60a5fa" />
-            <ellipse cx="180" cy="120" rx="90" ry="40" fill="#38bdf8" opacity="0.7" />
-            <path d="M120 200 Q140 180 180 180 Q220 180 240 200 Q200 210 160 210 Q140 210 120 200 Z" fill="#2563eb" />
+            <path
+              d="M60 180 Q120 80 260 120 Q320 140 400 60 Q380 120 320 180 Q220 240 120 200 Q80 190 60 180 Z"
+              fill="#60a5fa"
+            />
+            <ellipse
+              cx="180"
+              cy="120"
+              rx="90"
+              ry="40"
+              fill="#38bdf8"
+              opacity="0.7"
+            />
+            <path
+              d="M120 200 Q140 180 180 180 Q220 180 240 200 Q200 210 160 210 Q140 210 120 200 Z"
+              fill="#2563eb"
+            />
             {/* Yunus gövdesi */}
-            <path d="M120 160 Q170 80 300 120 Q320 130 340 110 Q320 150 260 170 Q180 190 120 160 Z" fill="#3b82f6" />
+            <path
+              d="M120 160 Q170 80 300 120 Q320 130 340 110 Q320 150 260 170 Q180 190 120 160 Z"
+              fill="#3b82f6"
+            />
             {/* Yunus yüzgeci */}
-            <path d="M200 120 Q210 110 220 120 Q210 125 200 120 Z" fill="#2563eb" />
+            <path
+              d="M200 120 Q210 110 220 120 Q210 125 200 120 Z"
+              fill="#2563eb"
+            />
             {/* Yunus kuyruğu */}
-            <path d="M300 120 Q320 110 330 130 Q320 125 300 120 Z" fill="#2563eb" />
+            <path
+              d="M300 120 Q320 110 330 130 Q320 125 300 120 Z"
+              fill="#2563eb"
+            />
             {/* Göz */}
             <ellipse cx="260" cy="120" rx="6" ry="6" fill="#fff" />
             <ellipse cx="262" cy="122" rx="2" ry="2" fill="#1e293b" />
           </g>
         </svg>
         {/* Küçük balıklar: sadece sağ üstteki kalsın, sol alttaki kaldırıldı */}
-        <svg className="absolute right-24 top-40 animate-fish-swim2" width="60" height="30" viewBox="0 0 60 30" fill="none" style={{opacity:0.18}}>
+        <svg
+          className="absolute right-24 top-40 animate-fish-swim2"
+          width="60"
+          height="30"
+          viewBox="0 0 60 30"
+          fill="none"
+          style={{ opacity: 0.18 }}
+        >
           <ellipse cx="30" cy="15" rx="20" ry="8" fill="#38bdf8" />
           <polygon points="50,15 60,10 60,20" fill="#38bdf8" />
           <ellipse cx="43" cy="15" rx="1.5" ry="1.5" fill="#fff" />
         </svg>
         {/* Deniz dalgası SVG: z-index yükseltildi */}
-        <svg width="100%" height="100%" viewBox="0 0 1440 160" fill="none" className="absolute bottom-0 left-0 animate-wave z-20" style={{marginLeft:'320px', width:'calc(100% - 320px)'}}>
-          <path d="M0,80 C360,160 1080,0 1440,80 L1440,160 L0,160 Z" fill="#38bdf8" fillOpacity="0.13" />
+        <svg
+          width="100%"
+          height="100%"
+          viewBox="0 0 1440 160"
+          fill="none"
+          className="absolute bottom-0 left-0 animate-wave z-20"
+          style={{ marginLeft: "320px", width: "calc(100% - 320px)" }}
+        >
+          <path
+            d="M0,80 C360,160 1080,0 1440,80 L1440,160 L0,160 Z"
+            fill="#38bdf8"
+            fillOpacity="0.13"
+          />
         </svg>
       </div>
       <Sidebar />
       <div className="flex-1 flex flex-col items-center justify-center py-10 px-4 md:px-16 relative z-10">
         {/* Profil kartı animasyonlu ve gölgeli */}
-        <Paper elevation={12} className="w-full max-w-3xl p-4 md:p-8 rounded-3xl shadow-2xl bg-white/95 animate-modal-pop relative overflow-visible flex flex-col"
+        <Paper
+          elevation={12}
+          className="w-full max-w-3xl p-4 md:p-8 rounded-3xl shadow-2xl bg-white/95 animate-modal-pop relative overflow-visible flex flex-col"
           style={{
-            maxHeight: 'calc(100vh - 48px)',
-            minHeight: '480px',
-            overflowY: 'auto',
-            justifyContent: 'flex-start',
-            alignItems: 'center',
-            margin: 'auto',
+            maxHeight: "calc(100vh - 48px)",
+            minHeight: "480px",
+            overflowY: "auto",
+            justifyContent: "flex-start",
+            alignItems: "center",
+            margin: "auto",
           }}
         >
           {/* 2 kolonlu grid düzeni */}
@@ -177,50 +462,160 @@ const Profile = () => {
               {/* Rozetler */}
               <div className="flex flex-wrap gap-2 justify-center mb-2 mt-2">
                 <span className="inline-flex items-center gap-1 bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-3 py-1 rounded-full font-semibold shadow animate-bounce-badge border-2 border-white text-sm">
-                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="9" fill="#fbbf24" /><text x="50%" y="62%" textAnchor="middle" fontSize="11" fill="#fff">🔒</text></svg>
+                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                    <circle cx="9" cy="9" r="9" fill="#fbbf24" />
+                    <text
+                      x="50%"
+                      y="62%"
+                      textAnchor="middle"
+                      fontSize="11"
+                      fill="#fff"
+                    >
+                      🔒
+                    </text>
+                  </svg>
                   Secure Profile
                 </span>
                 <span className="inline-flex items-center gap-1 bg-gradient-to-r from-green-400 to-blue-400 text-white px-3 py-1 rounded-full font-semibold shadow animate-bounce-badge animate-glow border-2 border-white text-sm">
-                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="9" fill="#34d399" /><text x="50%" y="62%" textAnchor="middle" fontSize="11" fill="#fff">💡</text></svg>
+                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                    <circle cx="9" cy="9" r="9" fill="#34d399" />
+                    <text
+                      x="50%"
+                      y="62%"
+                      textAnchor="middle"
+                      fontSize="11"
+                      fill="#fff"
+                    >
+                      💡
+                    </text>
+                  </svg>
                   Smart Finance
                 </span>
                 <span className="inline-flex items-center gap-1 bg-gradient-to-r from-pink-400 to-yellow-400 text-white px-3 py-1 rounded-full font-semibold shadow animate-bounce-badge border-2 border-white text-sm">
-                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="9" fill="#f472b6" /><text x="50%" y="62%" textAnchor="middle" fontSize="11" fill="#fff">⭐</text></svg>
+                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                    <circle cx="9" cy="9" r="9" fill="#f472b6" />
+                    <text
+                      x="50%"
+                      y="62%"
+                      textAnchor="middle"
+                      fontSize="11"
+                      fill="#fff"
+                    >
+                      ⭐
+                    </text>
+                  </svg>
                   VIP Member
                 </span>
               </div>
               {/* Avatar */}
               <div className="relative group">
-                <Avatar sx={{ width: 110, height: 110, bgcolor: '#6366f1', fontSize: 48 }} src={avatarPreview} className="shadow-xl border-4 border-white animate-float-slow">
+                <Avatar
+                  sx={{
+                    width: 110,
+                    height: 110,
+                    bgcolor: "#6366f1",
+                    fontSize: 48,
+                  }}
+                  src={getUserImageSrc()}
+                  className="shadow-xl border-4 border-white animate-float-slow"
+                >
                   <UserCircleIcon className="w-20 h-20 text-white" />
                 </Avatar>
-                <label className="absolute bottom-2 right-2 bg-blue-600 rounded-full p-2 cursor-pointer shadow-lg group-hover:scale-110 transition-transform" title="Change Avatar">
-                  <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536M9 13h6m2 2a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2h10z" /></svg>
+                <label
+                  className="absolute bottom-2 right-2 bg-blue-600 rounded-full p-2 cursor-pointer shadow-lg group-hover:scale-110 transition-transform"
+                  title="Change Avatar"
+                >
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleAvatarChange}
+                  />
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5 text-white"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15.232 5.232l3.536 3.536M9 13h6m2 2a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2h10z"
+                    />
+                  </svg>
                 </label>
               </div>
               {/* Kullanıcı adı ve özet */}
               <div className="w-full flex flex-col items-center gap-1 mt-2">
                 <h2 className="text-2xl font-bold text-indigo-700 tracking-tight flex items-center gap-2 animate-glow">
-                  {userInfo ? `${userInfo.firstname} ${userInfo.lastname}` : 'Profile'}
-                  <span className="inline-block bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-2 py-1 rounded-lg text-xs font-semibold ml-2 animate-bounce-badge">Active</span>
+                  {userInfo
+                    ? `${userInfo.firstName} ${userInfo.lastName}`
+                    : "Profile"}
                 </h2>
                 <p className="text-gray-500 text-base">@{userInfo?.username}</p>
                 <div className="flex flex-col gap-1 text-gray-700 text-sm mt-2">
-                  <span className="flex items-center gap-2"><EnvelopeIcon className="w-4 h-4 text-indigo-400" /> {userInfo?.email}</span>
-                  <span className="flex items-center gap-2"><IdentificationIcon className="w-4 h-4 text-indigo-400" /> {accountInfo?.accountType || 'Standard'}</span>
-                  <span className="flex items-center gap-2"><LockClosedIcon className="w-4 h-4 text-indigo-400" /> {accountInfo?.balance?.toLocaleString('en-US', {minimumFractionDigits:2})} ₺</span>
+                  <span className="flex items-center gap-2">
+                    <EnvelopeIcon className="w-4 h-4 text-indigo-400" />{" "}
+                    {userInfo?.email}
+                  </span>
+                  {Array.isArray(accountList) && accountList.length > 0 && (
+                    <>
+                      <span className="flex items-center gap-2">
+                        <IdentificationIcon className="w-4 h-4 text-indigo-400" />
+                        {accountList.map((acc, idx) => (
+                          <span key={acc.accountType} className="inline-block bg-blue-50 text-blue-700 rounded px-2 py-0.5 text-xs font-semibold mr-1">
+                            {acc.accountType}
+                            {idx < accountList.length - 1 && <span className="mx-1 text-gray-400">|</span>}
+                          </span>
+                        ))}
+                      </span>
+                      <span className="flex items-center gap-2 flex-wrap mt-1">
+                        <LockClosedIcon className="w-4 h-4 text-indigo-400" />
+                        {accountList.map((acc, idx) => (
+                          <span key={acc.accountType + '-bal'} className="inline-block bg-green-50 text-green-700 rounded px-2 py-0.5 text-xs font-semibold mr-1">
+                            {acc.balance?.toLocaleString("en-US", { minimumFractionDigits: 2 })} {acc.accountType}
+                            {idx < accountList.length - 1 && <span className="mx-1 text-gray-400">|</span>}
+                          </span>
+                        ))}
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
               {/* Güvenlik & Aktivite */}
               <Divider className="my-4" />
               <div className="w-full">
-                <h3 className="text-base font-semibold text-indigo-700 mb-2">Security & Recent Activity</h3>
+                <h3 className="text-base font-semibold text-indigo-700 mb-2">
+                  Security & Recent Activity
+                </h3>
                 <ul className="text-gray-700 text-sm list-disc pl-5">
-                  <li>Last login: {userInfo?.lastLogin ? new Date(userInfo.lastLogin).toLocaleString() : 'Unknown'}</li>
-                  <li>Account created: {userInfo?.createdAt ? new Date(userInfo.createdAt).toLocaleDateString() : 'Unknown'}</li>
-                  <li>2FA: <span className="font-semibold text-green-600">Enabled</span></li>
-                  <li>Device: <span className="font-semibold">{navigator.userAgent}</span></li>
+                  <li>
+                    Last login:{" "}
+                    {userInfo?.lastLogin
+                      ? new Date(userInfo.lastLogin).toLocaleString()
+                      : "Unknown"}
+                  </li>
+                  <li>
+                    Account created:{" "}
+                    {userInfo?.createdAt
+                      ? new Date(userInfo.createdAt).toLocaleDateString()
+                      : "Unknown"}
+                  </li>
+                  <li>
+                    2FA:{" "}
+                    <span className="font-semibold text-green-600">
+                      Enabled
+                    </span>
+                  </li>
+                  <li>
+                    Device:{" "}
+                    <span className="font-semibold">
+                      {uaResult.browser.name} {uaResult.browser.version} /{" "}
+                      {uaResult.os.name} {uaResult.os.version}
+                    </span>
+                  </li>
                 </ul>
               </div>
             </div>
@@ -228,96 +623,345 @@ const Profile = () => {
             <div className="flex-1 flex flex-col gap-8 min-w-[220px]">
               {/* Hesap Bilgileri */}
               <div>
-                <h3 className="text-lg font-semibold text-indigo-700 mb-3">Account Information</h3>
-                <form className="flex flex-col gap-3" onSubmit={e => { e.preventDefault(); handleSave(); }}>
+                <h3 className="text-lg font-semibold text-indigo-700 mb-3">
+                  Account Information
+                </h3>
+                <form
+                  className="flex flex-col gap-3"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleSave();
+                  }}
+                >
                   <div className="flex flex-col md:flex-row gap-3">
-                    <TextField label="First Name" name="firstname" value={form.firstname} onChange={handleChange} disabled={!editMode} fullWidth size="small" />
-                    <TextField label="Last Name" name="lastname" value={form.lastname} onChange={handleChange} disabled={!editMode} fullWidth size="small" />
+                    <TextField
+                      label="First Name"
+                      name="firstname"
+                      value={form.firstname}
+                      onChange={handleChange}
+                      disabled
+                      fullWidth
+                      size="small"
+                    />
+                    <TextField
+                      label="Last Name"
+                      name="lastname"
+                      value={form.lastname}
+                      onChange={handleChange}
+                      disabled
+                      fullWidth
+                      size="small"
+                    />
                   </div>
-                  <TextField label="E-Mail" name="email" value={form.email} onChange={handleChange} disabled={!editMode} fullWidth size="small" />
-                  <div className="flex gap-3 mt-1">
-                    {!editMode ? (
-                      <Button variant="contained" color="primary" onClick={handleEdit}>Edit</Button>
-                    ) : (
-                      <>
-                        <Button variant="contained" color="success" type="submit">Save</Button>
-                        <Button variant="outlined" color="secondary" onClick={handleCancel}>Cancel</Button>
-                      </>
-                    )}
-                  </div>
+                  <TextField
+                    label="E-Mail"
+                    name="email"
+                    value={form.email}
+                    onChange={handleChange}
+                    disabled
+                    fullWidth
+                    size="small"
+                  />
                 </form>
               </div>
               {/* Şifre Değiştir */}
               <div>
-                <h3 className="text-lg font-semibold text-indigo-700 mb-3">Change Password</h3>
-                <form className="flex flex-col gap-3" onSubmit={handlePasswordSubmit}>
-                  <TextField label="Current Password" name="oldPassword" type="password" value={passwordForm.oldPassword} onChange={handlePasswordChange} required fullWidth size="small" />
-                  <TextField label="New Password" name="newPassword" type="password" value={passwordForm.newPassword} onChange={handlePasswordChange} required fullWidth size="small" />
-                  <TextField label="Confirm New Password" name="confirmPassword" type="password" value={passwordForm.confirmPassword} onChange={handlePasswordChange} required fullWidth size="small" />
+                <h3 className="text-lg font-semibold text-indigo-700 mb-3">
+                  Change Password
+                </h3>
+                <form
+                  className="flex flex-col gap-3"
+                  onSubmit={handlePasswordSubmit}
+                >
+                  <TextField
+                    label="Current Password"
+                    name="oldPassword"
+                    type="password"
+                    value={passwordForm.oldPassword}
+                    onChange={handlePasswordChange}
+                    required
+                    fullWidth
+                    size="small"
+                  />
+                  <TextField
+                    label="New Password"
+                    name="newPassword"
+                    type="password"
+                    value={passwordForm.newPassword}
+                    onChange={handlePasswordChange}
+                    required
+                    fullWidth
+                    size="small"
+                  />
+                  <TextField
+                    label="Confirm New Password"
+                    name="confirmPassword"
+                    type="password"
+                    value={passwordForm.confirmPassword}
+                    onChange={handlePasswordChange}
+                    required
+                    fullWidth
+                    size="small"
+                  />
                   <div className="flex gap-3 mt-1">
-                    <Button variant="contained" color="primary" type="submit">Change Password</Button>
+                    <Button variant="contained" color="primary" type="submit">
+                      Change Password
+                    </Button>
                   </div>
                 </form>
               </div>
               {/* Bildirim Ayarları */}
               <div>
-                <h3 className="text-lg font-semibold text-indigo-700 mb-3">Notification Settings</h3>
+                <h3 className="text-lg font-semibold text-indigo-700 mb-3">
+                  Notification Settings
+                </h3>
                 <div className="flex flex-col md:flex-row gap-4">
-                  <label className="flex items-center gap-2 text-base"><input type="checkbox" name="email" checked={notifications.email} onChange={handleNotifChange} className="accent-blue-600 w-5 h-5" /> E-Mail Notifications</label>
-                  <label className="flex items-center gap-2 text-base"><input type="checkbox" name="sms" checked={notifications.sms} onChange={handleNotifChange} className="accent-blue-600 w-5 h-5" /> SMS Notifications</label>
-                  <label className="flex items-center gap-2 text-base"><input type="checkbox" name="inApp" checked={notifications.inApp} onChange={handleNotifChange} className="accent-blue-600 w-5 h-5" /> In-App Notifications</label>
+                  <label className="flex items-center gap-2 text-base">
+                    <input
+                      type="checkbox"
+                      name="email"
+                      checked={notifications.email}
+                      onChange={handleNotifChange}
+                      className="accent-blue-600 w-5 h-5"
+                    />{" "}
+                    E-Mail Notifications
+                  </label>
+                  <label className="flex items-center gap-2 text-base">
+                    <input
+                      type="checkbox"
+                      name="sms"
+                      checked={notifications.sms}
+                      onChange={handleNotifChange}
+                      className="accent-blue-600 w-5 h-5"
+                    />{" "}
+                    SMS Notifications
+                  </label>
+                  <label className="flex items-center gap-2 text-base">
+                    <input
+                      type="checkbox"
+                      name="inApp"
+                      checked={notifications.inApp}
+                      onChange={handleNotifChange}
+                      className="accent-blue-600 w-5 h-5"
+                    />{" "}
+                    In-App Notifications
+                  </label>
                 </div>
               </div>
-              {/* Finansal Hedefler */}
-              <div>
-                <h3 className="text-lg font-semibold text-indigo-700 mb-3">Financial Goals</h3>
-                <form className="flex flex-col md:flex-row gap-3 mb-2" onSubmit={handleGoalAdd}>
-                  <TextField label="Goal Amount (₺)" type="number" value={goal.amount} onChange={e => setGoal({ ...goal, amount: e.target.value })} size="small" />
-                  <TextField label="Description" value={goal.desc} onChange={e => setGoal({ ...goal, desc: e.target.value })} size="small" />
-                  <Button variant="contained" color="primary" type="submit">Add Goal</Button>
-                </form>
-                <ul className="list-disc pl-6 text-gray-700">
-                  {goals.map(g => <li key={g.id}>{g.amount} ₺ - {g.desc}</li>)}
-                  {goals.length === 0 && <li className="text-gray-400">No goals set yet.</li>}
-                </ul>
+              {/* Finansal Hedefler Butonu */}
+              <div className="flex flex-col items-start">
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  startIcon={<AddCircleOutlineIcon />}
+                  onClick={handleGoalModalOpen}
+                  sx={{ fontWeight: 700, borderRadius: 2, mb: 1 }}
+                >
+                  Financial Goals
+                </Button>
               </div>
-              {/* Oturum Yönetimi */}
-              <div>
-                <h3 className="text-lg font-semibold text-indigo-700 mb-3">Active Sessions</h3>
-                <div className="flex flex-col gap-2">
-                  {sessions.map(s => (
-                    <div key={s.id} className={`flex items-center gap-4 p-3 rounded-xl border ${s.current ? 'border-blue-500 bg-blue-50' : 'border-slate-200 bg-slate-50'} shadow-sm`}> 
-                      <span className="font-bold text-blue-700">{s.device}</span>
-                      <span className="text-xs text-gray-500">{s.ip}</span>
-                      <span className="text-xs text-gray-500">{s.lastActive}</span>
-                      {s.current && <span className="ml-auto px-2 py-1 bg-blue-600 text-white rounded text-xs">Current</span>}
-                    </div>
-                  ))}
-                </div>
-              </div>
+              {/* Financial Goals Modal */}
+              <Dialog open={goalModalOpen} onClose={handleGoalModalClose} maxWidth="sm" fullWidth>
+                <DialogTitle sx={{ fontWeight: 800, color: 'primary.main', fontSize: 24, pb: 1 }}>
+                  <Box display="flex" alignItems="center" gap={1}>
+                    <AddCircleOutlineIcon color="primary" />
+                    Financial Goals
+                  </Box>
+                </DialogTitle>
+                <DialogContent dividers sx={{ bgcolor: '#f8fafc' }}>
+                  <form onSubmit={handleGoalAdd} style={{ display: 'flex', gap: 12, marginBottom: 18, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <TextField
+                      label="Description"
+                      name="description"
+                      value={goalForm.description}
+                      onChange={handleGoalFormChange}
+                      size="small"
+                      required
+                      sx={{ minWidth: 160 }}
+                    />
+                    <TextField
+                      label="Amount"
+                      name="amount"
+                      type="number"
+                      value={goalForm.amount}
+                      onChange={handleGoalFormChange}
+                      size="small"
+                      required
+                      sx={{ minWidth: 120 }}
+                    />
+                    <Select
+                      label="Account Type"
+                      name="accountType"
+                      value={goalForm.accountType}
+                      onChange={handleGoalFormChange}
+                      size="small"
+                      sx={{ minWidth: 120 }}
+                      displayEmpty
+                    >
+                      {accountTypeOptions.length === 0 && (
+                        <MenuItem value="" disabled>No account found</MenuItem>
+                      )}
+                      {accountTypeOptions.map(opt => (
+                        <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+                      ))}
+                    </Select>
+                    <Button type="submit" variant="contained" color="primary" sx={{ fontWeight: 700, borderRadius: 2 }}>
+                      Add
+                    </Button>
+                  </form>
+                  <Box sx={{ minHeight: 120 }}>
+                    {goalLoading ? (
+                      <Box display="flex" justifyContent="center" alignItems="center" minHeight={80}><CircularProgress /></Box>
+                    ) : goalList.length === 0 ? (
+                      <Typography color="text.secondary" align="center" sx={{ mt: 2 }}>No goals set yet.</Typography>
+                    ) : (
+                      <Box>
+                        {goalList.map(goal => {
+                          // Hedefin accountType'ına göre ilgili hesabı bul
+                          let userBalance = 0;
+                          if (Array.isArray(accountList)) {
+                            const acc = accountList.find(a => a.accountType === goal.accountType);
+                            userBalance = acc ? acc.balance : 0;
+                          } else if (accountInfo && accountInfo.accountType === goal.accountType) {
+                            userBalance = accountInfo.balance;
+                          }
+                          const isGoalReached = Number(userBalance) >= Number(goal.amount);
+                          return (
+                            <Box key={goal.id} display="flex" alignItems="center" justifyContent="space-between" p={1.2} mb={1} borderRadius={2} bgcolor={isGoalReached ? '#d1fae5' : '#fff'} boxShadow={1}>
+                              <Box display="flex" alignItems="center" gap={1}>
+                                <Typography fontWeight={700} color={isGoalReached ? 'success.main' : 'primary.main'}>
+                                  {goal.description}
+                                </Typography>
+                                {isGoalReached && <CheckCircleIcon color="success" fontSize="small" />}
+                              </Box>
+                              <Box>
+                                <Typography variant="body2" color="text.secondary">{goal.amount} ₺ - {goal.accountType}</Typography>
+                                <Typography variant="caption" color="text.disabled">{goal.createdAt ? new Date(goal.createdAt).toLocaleDateString() : ''}</Typography>
+                              </Box>
+                              <Tooltip title="Delete Goal">
+                                <IconButton color="error" onClick={() => handleGoalDelete(goal.id)}>
+                                  <DeleteIcon />
+                                </IconButton>
+                              </Tooltip>
+                            </Box>
+                          );
+                        })}
+                      </Box>
+                    )}
+                  </Box>
+                </DialogContent>
+                <DialogActions>
+                  <Button onClick={handleGoalModalClose} color="secondary" variant="outlined" sx={{ fontWeight: 700, borderRadius: 2 }}>Close</Button>
+                </DialogActions>
+              </Dialog>
               {/* Hesap Açma Sekmesi */}
               <div>
-                <h3 className="text-lg font-semibold text-indigo-700 mb-3">Yeni Hesap Aç</h3>
-                <form className="flex flex-col md:flex-row gap-3 mb-2 items-center" onSubmit={handleOpenAccount}>
-                  <select value={newAccountType} onChange={e => setNewAccountType(e.target.value)} className="p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-400">
-                    <option value="TL">TL Hesabı</option>
-                    <option value="USD">Dolar Hesabı (USD)</option>
-                    <option value="EUR">Euro Hesabı (EUR)</option>
-                    <option value="ALTIN">Altın Hesabı (XAU)</option>
-                  </select>
-                  <Button variant="contained" color="primary" type="submit">Hesap Aç</Button>
-                </form>
-                {accountOpenMsg && <div className="text-green-700 bg-green-100 rounded p-2 text-sm mt-1 animate-bounce-badge">{accountOpenMsg}</div>}
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  startIcon={<AccountBalanceWalletIcon />}
+                  onClick={handleAccountsModalOpen}
+                  sx={{ fontWeight: 700, borderRadius: 2 }}
+                >
+                  Accounts
+                </Button>
+                {/* Hesaplarım Modal */}
+                <Dialog open={accountsModalOpen} onClose={handleAccountsModalClose} maxWidth="xs" fullWidth>
+                  <DialogTitle sx={{ fontWeight: 800, color: 'primary.main', fontSize: 22, pb: 1 }}>
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <AccountBalanceWalletIcon color="primary" />
+                      Accounts
+                    </Box>
+                  </DialogTitle>
+                  <DialogContent dividers sx={{ bgcolor: '#f8fafc' }}>
+                    {/* Yeni hesap açma alanı */}
+                    <form onSubmit={handleOpenAccount} style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 18 }}>
+                      <Select
+                        value={newAccountType}
+                        onChange={e => setNewAccountType(e.target.value)}
+                        displayEmpty
+                        size="small"
+                        sx={{ minWidth: 120 }}
+                        disabled={openAccountLoading || availableAccountTypes.length === 0}
+                      >
+                        <MenuItem value="" disabled>Select account type</MenuItem>
+                        {availableAccountTypes.map(opt => (
+                          <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+                        ))}
+                      </Select>
+                      <Button type="submit" variant="contained" color="primary" disabled={!newAccountType || openAccountLoading || availableAccountTypes.length === 0} sx={{ fontWeight: 700, borderRadius: 2 }}>
+                        Open Account
+                      </Button>
+                    </form>
+                    {/* Hesap açma onay modalı */}
+                    <Dialog open={openAccountConfirmOpen} onClose={() => setOpenAccountConfirmOpen(false)} maxWidth="xs" fullWidth>
+                      <DialogTitle sx={{ fontWeight: 700, color: 'primary.main', fontSize: 20 }}>Account Opening Terms</DialogTitle>
+                      <DialogContent dividers sx={{ bgcolor: '#f8fafc' }}>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                          By opening a new account, you agree to the following terms and conditions:<br /><br />
+                          - You are solely responsible for all transactions made from this account.<br />
+                          - The bank may request additional information or documents if necessary.<br />
+                          - You agree to comply with all applicable laws and regulations.<br />
+                          - The bank reserves the right to suspend or close the account in case of suspicious activity.<br /><br />
+                          Please read the full terms and conditions before proceeding.
+                        </Typography>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+                          <input type="checkbox" checked={legalChecked} onChange={e => setLegalChecked(e.target.checked)} />
+                          <span>I have read and accept the terms and conditions.</span>
+                        </label>
+                      </DialogContent>
+                      <DialogActions>
+                        <Button onClick={() => setOpenAccountConfirmOpen(false)} color="secondary" variant="outlined">Cancel</Button>
+                        <Button onClick={handleConfirmOpenAccount} color="primary" variant="contained" disabled={!legalChecked || openAccountLoading}>
+                          {openAccountLoading ? <CircularProgress size={18} /> : 'Confirm & Open Account'}
+                        </Button>
+                      </DialogActions>
+                    </Dialog>
+                    {/* Hesaplar listesi */}
+                    {Array.isArray(accountList) && accountList.length > 0 ? (
+                      <Box>
+                        {accountList.map(acc => (
+                          <Box key={acc.accountType} display="flex" alignItems="center" justifyContent="space-between" p={1.2} mb={1} borderRadius={2} bgcolor="#fff" boxShadow={1}>
+                            <Box display="flex" alignItems="center" gap={1}>
+                              <Typography fontWeight={700} color="primary.main">{acc.accountType}</Typography>
+                            </Box>
+                            <Box>
+                              <Typography variant="body2" color="text.secondary">{acc.balance?.toLocaleString("en-US", { minimumFractionDigits: 2 })} {acc.accountType}</Typography>
+                            </Box>
+                          </Box>
+                        ))}
+                      </Box>
+                    ) : (
+                      <Typography color="text.secondary" align="center" sx={{ mt: 2 }}>No accounts found.</Typography>
+                    )}
+                  </DialogContent>
+                  <DialogActions>
+                    <Button onClick={handleAccountsModalClose} color="secondary" variant="outlined" sx={{ fontWeight: 700, borderRadius: 2 }}>Close</Button>
+                  </DialogActions>
+                </Dialog>
               </div>
             </div>
           </div>
         </Paper>
-        <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
-          <Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity} sx={{ width: '100%' }}>
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={4000}
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          anchorOrigin={{ vertical: "top", horizontal: "right" }}
+        >
+          <Alert
+            onClose={() => setSnackbar({ ...snackbar, open: false })}
+            severity={snackbar.severity}
+            sx={{ width: "100%" }}
+          >
             {snackbar.message}
           </Alert>
         </Snackbar>
-        {loading && <div className="fixed inset-0 flex items-center justify-center bg-white/70 z-50"><CircularProgress size={60} /></div>}
+        {loading && (
+          <div className="fixed inset-0 flex items-center justify-center bg-white/70 z-50">
+            <CircularProgress size={60} />
+          </div>
+        )}
       </div>
       <style>{`
         @keyframes modal-pop {
@@ -415,4 +1059,5 @@ const Profile = () => {
   );
 };
 
-export default Profile; 
+export default Profile;
+  

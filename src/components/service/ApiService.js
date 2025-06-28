@@ -82,4 +82,58 @@ export default class ApiService {
     );
     return response.data;
   }
+  static async changePassword(passwordChangeRequest) {
+    const response = await axios.post(
+      `${this.BASE_URL1}/api/authenticate/change-password`,
+      passwordChangeRequest,
+      { headers: this.getHeader() }
+    );
+    return response.data;
+  }
+  static async uploadProfileImage(userId, file) {
+    const formData = new FormData();
+    formData.append("file", file);
+    const response = await axios.post(
+      `${this.BASE_URL3}/api/users/add-image/${userId}`,
+      formData,
+      {
+        headers: {
+          ...this.getHeader(),
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
+    return response.data;
+  }
+  static async addGoal(goals) {
+    const response = await axios.post(
+      `${this.BASE_URL3}/api/users/add-goal`,
+      goals,
+      { headers: this.getHeader() }
+    );
+    return response.data;
+  }
+  static async getGoals(userId) {
+    const response = await axios.get(
+      `${this.BASE_URL3}/api/users/get-goals/${userId}`,
+      {},
+      { headers: this.getHeader() }
+    );
+    return response.data;
+  }
+  static async deleteGoal(goalId) {
+    const response = await axios.delete(
+      `${this.BASE_URL3}/api/users/delete-goal/${goalId}`,
+      { headers: this.getHeader() }
+    );
+    return response.data;
+  }
+  static async openAccount(createAccountDTO) {
+    const response = await axios.post(
+      `${this.BASE_URL2}/api/account/add-account`,
+      createAccountDTO,
+      { headers: this.getHeader() }
+    );
+    return response.data;
+  }
 }
