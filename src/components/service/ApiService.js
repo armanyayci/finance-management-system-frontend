@@ -136,4 +136,34 @@ export default class ApiService {
     );
     return response.data;
   }
+  static async getExpenses(userId) {
+    const response = await axios.get(
+      `${this.BASE_URL2}/api/expense/get-expenses`,
+      { params: { userId }, headers: this.getHeader() }
+    );
+    return response.data;
+  }
+  static async addExpense(userId, expenseDTO) {
+    const response = await axios.post(
+      `${this.BASE_URL2}/api/expense/add-expense/${userId}`,
+      expenseDTO,
+      { headers: this.getHeader() }
+    );
+    return response.data;
+  }
+  static async deleteExpense(expenseId) {
+    const response = await axios.delete(
+      `${this.BASE_URL2}/api/expense/delete-expense/${expenseId}`,
+      { headers: this.getHeader() }
+    );
+    return response.data;
+  }
+  static async updateExpense(expenseId, expenseDTO) {
+    const response = await axios.put(
+      `${this.BASE_URL2}/api/expense/update-expense/${expenseId}`,
+      expenseDTO,
+      { headers: this.getHeader() }
+    );
+    return response.data;
+  }
 }
