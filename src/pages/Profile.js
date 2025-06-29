@@ -131,6 +131,11 @@ const Profile = () => {
           lastname: user?.lastName || "",
           email: user?.email || "",
         });
+        // Kullanıcının twoFactorEnabled durumuna göre notifications state'ini ayarla
+        setNotifications(prev => ({
+          ...prev,
+          email: user?.twoFactorEnabled || false
+        }));
         const accountRes = await ApiService.GetAccountInfoByUsername(username);
         let accArr = Array.isArray(accountRes)
           ? accountRes
@@ -302,8 +307,35 @@ const Profile = () => {
     }
   };
 
-  const handleNotifChange = (e) =>
-    setNotifications({ ...notifications, [e.target.name]: e.target.checked });
+  const handleNotifChange = async (e) => {
+    const { name, checked } = e.target;
+    setNotifications({ ...notifications, [name]: checked });
+    
+    // E-Mail Notifications (2FA) değiştiğinde API çağrısı yap
+    if (name === 'email' && userInfo?.id) {
+             try {
+         const response = await ApiService.enable2FA(userInfo.id, checked);
+         // API başarılı olduğunda userInfo state'ini de güncelle
+         setUserInfo(prev => ({
+           ...prev,
+           twoFactorEnabled: checked
+         }));
+         setSnackbar({
+           open: true,
+           message: response?.message || `2FA ${checked ? 'enabled' : 'disabled'} successfully!`,
+           severity: 'success',
+         });
+       } catch (error) {
+        // API hatası durumunda checkbox'ı eski haline döndür
+        setNotifications({ ...notifications, [name]: !checked });
+        setSnackbar({
+          open: true,
+          message: error?.response?.data?.message || error?.message || `Failed to ${checked ? 'enable' : 'disable'} 2FA!`,
+          severity: 'error',
+        });
+      }
+    }
+  };
 
   const handleGoalAdd = async (e) => {
     e.preventDefault();
@@ -861,8 +893,8 @@ const Profile = () => {
                   </li>
                   <li>
                     2FA:{" "}
-                    <span className={`font-semibold ${notifications.email ? "text-green-600" : "text-red-600"}`}>
-                      {notifications.email ? "Enabled" : "Disabled"}
+                    <span className={`font-semibold ${userInfo?.twoFactorEnabled ? "text-green-600" : "text-red-600"}`}>
+                      {userInfo?.twoFactorEnabled ? "Enabled" : "Disabled"}
                     </span>
                   </li>
                   <li>

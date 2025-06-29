@@ -29,6 +29,7 @@ const TransferMoney = ({ setIsModalOpen }) => {
           username
         );
         if (accountResponse.success) {
+          console.log("Account Info from API:", accountResponse.data); // Debug için
           setAccountInfo(accountResponse.data);
         }
 
@@ -71,12 +72,18 @@ const TransferMoney = ({ setIsModalOpen }) => {
       return;
     }
 
+    console.log("Full Account Info:", accountInfo); // Debug: Tüm account info'yu göster
+    console.log("Account Type:", accountInfo?.accountType); // Debug: AccountType'ı özellikle göster
+
     const transferData = {
       senderId: senderId, // Burada senderId artık dinamik olarak username'e göre alınıyor
       code: recipient,
       money: parseFloat(amount),
       description: description,
+      accountType: accountInfo?.accountType || accountInfo?.type || accountInfo?.currency || accountInfo?.currencyType || "TRY", // Farklı olası alan isimlerini dene
     };
+
+    console.log("Transfer Data:", transferData); // Debug için
 
     try {
       const response = await ApiService.moneyTransfer(transferData);

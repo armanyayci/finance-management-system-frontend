@@ -166,4 +166,19 @@ export default class ApiService {
     );
     return response.data;
   }
+  static async enable2FA(userId, enable2FA) {
+    const response = await axios.post(
+      `${this.BASE_URL1}/api/authenticate/enable-2fa`,
+      { userId, enable2FA },
+      { headers: this.getHeader() }
+    );
+    return response.data;
+  }
+  static async verify2FA(username, verificationCode) {
+    const response = await axios.post(
+      `${this.BASE_URL1}/api/authenticate/verify-2fa`,
+      { username, verificationCode }
+    );
+    return response.data;
+  }
 }
