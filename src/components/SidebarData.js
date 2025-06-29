@@ -22,11 +22,6 @@ export const SidebarData = [
         link: "/home"
     },
     {
-        title : "Income Tracker",
-        icon : <AddCircleIcon fontSize='large'/>,
-        link: "/"
-    },
-    {
         title : "Expense Tracker",
         icon : <LibraryAddCheckIcon fontSize='large'/>,
         link: "/expenses"

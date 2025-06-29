@@ -498,7 +498,7 @@ const ExpenseChart = () => {
                     Total Income
                   </p>
                   <p className="text-2xl font-bold text-green-700">
-                    {totalIncome.toLocaleString()} ₺
+                    {totalIncome.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺
                   </p>
                 </div>
                 <div className="text-green-500">
@@ -513,7 +513,7 @@ const ExpenseChart = () => {
                     Total Expense
                   </p>
                   <p className="text-2xl font-bold text-red-700">
-                    {totalExpense.toLocaleString()} ₺
+                    {totalExpense.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺
                   </p>
                 </div>
                 <div className="text-red-500">
@@ -658,12 +658,12 @@ const ExpenseChart = () => {
       </button>
       <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
         <p className="text-sm text-gray-600 mb-1">
-          Total Income:{" "}
-          <span className="text-green-600 font-bold">{totalIncome} ₺</span>
+          Total Income: {" "}
+          <span className="text-green-600 font-bold">{totalIncome.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺</span>
         </p>
         <p className="text-sm text-gray-600 mb-1">
-          Total Expense:{" "}
-          <span className="text-red-600 font-bold">{totalExpense} ₺</span>
+          Total Expense: {" "}
+          <span className="text-red-600 font-bold">{totalExpense.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺</span>
         </p>
       </div>
       <div className="flex flex-col items-center mb-6">
