@@ -680,11 +680,23 @@ const CurrencyList = () => {
               sx={{ fontSize: isMobile ? 20 : 28, color: "white", mr: 1 }}
             />
             <span style={{ fontWeight: 900 }}>
-              {userAccount?.data?.balance
-                ? userAccount.data.balance.toLocaleString("en-US", {
-                    minimumFractionDigits: 2,
-                  })
-                : "0.00"}
+              {(() => {
+                let tryBalance = "0.00";
+                if (userAccount && userAccount.data) {
+                  let accounts = Array.isArray(userAccount.data)
+                    ? userAccount.data
+                    : [userAccount.data];
+                  const tryAccount = accounts.find(
+                    (acc) => acc.accountType === "TRY"
+                  );
+                  if (tryAccount && tryAccount.balance !== undefined) {
+                    tryBalance = Number(tryAccount.balance).toLocaleString("en-US", {
+                      minimumFractionDigits: 2,
+                    });
+                  }
+                }
+                return tryBalance;
+              })()}
             </span>
             <span
               style={{

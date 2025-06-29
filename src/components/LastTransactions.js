@@ -8,38 +8,24 @@ const paymentTypeIcon = (type) => {
   return <TagIcon className="w-5 h-5 inline-block mr-1 text-gray-500" />;
 };
 
-const LastTransactions = ({ customClass = '' }) => {
+const LastTransactions = ({ customClass = '', currentAccount, accounts = [] }) => {
   const [transactions, setTransactions] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [balance, setBalance] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
-  const username = localStorage.getItem('username');
 
+  // currentAccount değiştiğinde işlemleri güncelle
   useEffect(() => {
-    const fetchTransactions = async () => {
-      try {
-        const response = await ApiService.GetAccountInfoByUsername(username);
-        if (response && response.success && response.data.lastTransactions) {
-          setTransactions(response.data.lastTransactions);
-          setBalance(response.data.balance);
-        } else {
-          setTransactions([]);
-          setBalance(null);
-        }
-      } catch (error) {
-        setTransactions([]);
-        setBalance(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-    if (username) {
-      fetchTransactions();
+    if (currentAccount) {
+      setTransactions(currentAccount.lastTransactions || []);
+      setBalance(currentAccount.balance || 0);
+      setCurrentPage(1); // Sayfa numarasını sıfırla
     } else {
-      setLoading(false);
+      setTransactions([]);
+      setBalance(null);
     }
-  }, [username]);
+  }, [currentAccount]);
 
   // Calculate previous balances for each transaction
   let prevBalances = [];
@@ -72,11 +58,20 @@ const LastTransactions = ({ customClass = '' }) => {
   return (
     <div className={`ml-10 ${customClass}`}>
       <div className="bg-white w-full min-h-[180px] border border-gray-300 rounded-lg shadow-md p-5">
-        <p className='text-xl font-bold mb-6'>Last 3 Days Transactions</p>
+        <div className="flex justify-between items-center mb-6">
+          <p className='text-xl font-bold'>Last 3 Days Transactions</p>
+          {currentAccount && (
+            <div className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
+              Account: <span className="font-semibold">{currentAccount.accountType}</span>
+            </div>
+          )}
+        </div>
         {loading ? (
           <p>Loading...</p>
+        ) : !currentAccount ? (
+          <p>No account selected.</p>
         ) : transactions.length === 0 ? (
-          <p>No transactions found for the last 3 days.</p>
+          <p>No transactions found for the last 3 days in this account.</p>
         ) : (
           <div className="flex flex-col gap-4">
             {currentTransactions.map((tx, idx) => (

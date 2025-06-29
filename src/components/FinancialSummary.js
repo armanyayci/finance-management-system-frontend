@@ -5,47 +5,35 @@ import TransferMoney from '../pages/TranferMoney';
 import { Copy } from 'lucide-react';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { BanknotesIcon, IdentificationIcon, ClipboardDocumentIcon, ArrowDownCircleIcon, ArrowUpCircleIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
+import { BanknotesIcon, IdentificationIcon, ClipboardDocumentIcon, ArrowDownCircleIcon, ArrowUpCircleIcon, EyeIcon, EyeSlashIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 
-const FinancialSummary = () => {
-  const [accountInfo, setAccountInfo] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+const FinancialSummary = ({ accounts = [], currentAccountIndex = 0, onAccountChange }) => {
   const [incomeExpense, setIncomeExpense] = useState({ income: 0, expense: 0 });
-  const username = localStorage.getItem('username');
   const [showBalance, setShowBalance] = useState(true);
- 
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Hesap değiştiğinde gelir/gideri güncelle
   useEffect(() => {
-    const fetchAccountInfo = async () => {
-      try {
-        const response = await ApiService.GetAccountInfoByUsername(username);
-        if (response && response.success) {
-          setAccountInfo(response.data);
-          // Calculate income and expense from lastTransactions
-          if (response.data.lastTransactions) {
-            let income = 0;
-            let expense = 0;
-            response.data.lastTransactions.forEach(tx => {
-              if (tx.isIncome) income += tx.amount;
-              else expense += tx.amount;
-            });
-            setIncomeExpense({ income, expense });
-          } else {
-            setIncomeExpense({ income: 0, expense: 0 });
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching account info:', error);
+    if (accounts.length > 0 && accounts[currentAccountIndex]) {
+      const account = accounts[currentAccountIndex];
+      if (account && account.lastTransactions) {
+        let income = 0;
+        let expense = 0;
+        account.lastTransactions.forEach(tx => {
+          if (tx.isIncome) income += tx.amount;
+          else expense += tx.amount;
+        });
+        setIncomeExpense({ income, expense });
+      } else {
         setIncomeExpense({ income: 0, expense: 0 });
       }
-    };
-    if (username) {
-      fetchAccountInfo();
     }
-  }, [username]);
+  }, [accounts, currentAccountIndex]);
 
   const handleCopy = () => {
-    if (accountInfo?.transferCode) {
-      navigator.clipboard.writeText(accountInfo.transferCode);
+    const account = accounts[currentAccountIndex];
+    if (account?.transferCode) {
+      navigator.clipboard.writeText(account.transferCode);
       toast.success('Transfer Code Copied!', {
         position: 'top-right',
         autoClose: 2000,
@@ -57,6 +45,22 @@ const FinancialSummary = () => {
       });
     }
   };
+
+  const handleNextAccount = () => {
+    if (onAccountChange) {
+      const newIndex = (currentAccountIndex + 1) % accounts.length;
+      onAccountChange(newIndex);
+    }
+  };
+
+  const handlePrevAccount = () => {
+    if (onAccountChange) {
+      const newIndex = (currentAccountIndex - 1 + accounts.length) % accounts.length;
+      onAccountChange(newIndex);
+    }
+  };
+
+  const account = accounts[currentAccountIndex];
 
   const data = {
     labels: ['Income', 'Expense'],
@@ -85,7 +89,7 @@ const FinancialSummary = () => {
         <h1 className="text-2xl font-bold mb-6 text-gray-800 flex items-center gap-2">
           <BanknotesIcon className="w-8 h-8 text-green-500" /> Financial Summary
         </h1>
-        {accountInfo ? (
+        {accounts.length > 0 && account ? (
           <>
             <div className="flex flex-col items-center mb-6">
               <div className="w-[160px] h-[160px] mb-4">
@@ -108,7 +112,7 @@ const FinancialSummary = () => {
               </div>
               <div className="flex items-center justify-center gap-2 mb-2">
                 <span className="text-4xl font-extrabold text-green-600">
-                  {showBalance ? accountInfo.balance : '****'}
+                  {showBalance ? account.balance : '****'}
                 </span>
                 <button
                   onClick={() => setShowBalance((prev) => !prev)}
@@ -124,17 +128,37 @@ const FinancialSummary = () => {
               </div>
               <span className="text-md font-semibold text-gray-500 mb-4 bg-gray-100 px-3 py-1 rounded-full flex items-center gap-1">
                 <IdentificationIcon className="w-4 h-4 text-gray-400" />
-                {accountInfo.accountType}
+                {account.accountType}
               </span>
               <div className="flex items-center gap-2">
                 <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1">
                   <ClipboardDocumentIcon className="w-4 h-4 text-blue-500" />
-                  {accountInfo.transferCode}
+                  {account.transferCode}
                 </span>
                 <button onClick={handleCopy} className="ml-2 p-1 rounded hover:bg-blue-200 transition-colors">
                   <Copy size={18} />
                 </button>
               </div>
+              {/* Hesaplar arası geçiş butonları */}
+              {accounts.length > 1 && (
+                <div className="flex gap-2 mt-4">
+                  <button
+                    onClick={handlePrevAccount}
+                    className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
+                    title="Önceki Hesap"
+                  >
+                    <ChevronLeftIcon className="w-6 h-6 text-gray-500" />
+                  </button>
+                  <button
+                    onClick={handleNextAccount}
+                    className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
+                    title="Sonraki Hesap"
+                  >
+                    <ChevronRightIcon className="w-6 h-6 text-gray-500" />
+                  </button>
+                </div>
+              )}
+              <div className="mt-2 text-xs text-gray-400">{currentAccountIndex + 1} / {accounts.length}</div>
             </div>
           </>
         ) : (

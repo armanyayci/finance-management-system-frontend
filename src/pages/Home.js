@@ -81,6 +81,8 @@ const WeatherWidget = () => {
 export const Home = () => {
   const [userInfo, setUserInfo] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [accounts, setAccounts] = useState([]); // Hesap verilerini Home'da yönet
+  const [currentAccountIndex, setCurrentAccountIndex] = useState(0); // Aktif hesap indexi
   const username = localStorage.getItem('username');
 
   useEffect(() => {
@@ -88,11 +90,14 @@ export const Home = () => {
       setLoading(true);
       try {
         const usersRes = await ApiService.GetAllUsers();
+        console.log('All users response:', usersRes);
         if (usersRes && Array.isArray(usersRes)) {
           const user = usersRes.find(u => u.username === username);
+          console.log('Found user:', user);
           setUserInfo(user);
         }
       } catch (e) {
+        console.error('Error fetching user:', e);
         setUserInfo(null);
       } finally {
         setLoading(false);
@@ -100,6 +105,39 @@ export const Home = () => {
     };
     if (username) fetchUser();
   }, [username]);
+
+  // Hesap bilgilerini çek
+  useEffect(() => {
+    const fetchAccountInfo = async () => {
+      try {
+        const response = await ApiService.GetAccountInfoByUsername(username);
+        if (response && response.success) {
+          let accountList = Array.isArray(response.data) ? response.data : [response.data];
+          // TRY hesabı varsa ilk sıraya al
+          const tryIndex = accountList.findIndex(acc => acc.accountType === 'TRY');
+          if (tryIndex > -1) {
+            const [tryAccount] = accountList.splice(tryIndex, 1);
+            accountList.unshift(tryAccount);
+          }
+          setAccounts(accountList);
+          setCurrentAccountIndex(0);
+        }
+      } catch (error) {
+        console.error('Error fetching account info:', error);
+        setAccounts([]);
+      }
+    };
+    if (username) {
+      fetchAccountInfo();
+    }
+  }, [username]);
+
+  // Hesap değiştirme fonksiyonları
+  const handleAccountChange = (newIndex) => {
+    setCurrentAccountIndex(newIndex);
+  };
+
+  const currentAccount = accounts[currentAccountIndex];
 
   return (
       <div className='home'>
@@ -120,11 +158,21 @@ export const Home = () => {
 
           {/* Main Content Grid - 2li grid + altına LastTransactions */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 items-stretch">
-            <div className="col-span-1 flex flex-col h-full"><FinancialSummary/></div>
+            <div className="col-span-1 flex flex-col h-full">
+              <FinancialSummary 
+                accounts={accounts}
+                currentAccountIndex={currentAccountIndex}
+                onAccountChange={handleAccountChange}
+              />
+            </div>
             <div className="col-span-1 flex flex-col h-full"><ExpenseChart/></div>
           </div>
           <div className="w-full">
-            <LastTransactions customClass="!ml-0"/>
+            <LastTransactions 
+              customClass="!ml-0"
+              currentAccount={currentAccount}
+              accounts={accounts}
+            />
           </div>
         </div>
       </div>
