@@ -59,9 +59,9 @@ const ExpensePlanner = () => {
     const fetchExpenses = async () => {
       setLoading(true);
       try {
-        const userId = localStorage.getItem("userId");
-        if (userId) {
-          const res = await ApiService.getExpenses(userId);
+        const username = localStorage.getItem("username");
+        if (username) {
+          const res = await ApiService.getExpenses(username);
           // API response: assume res.data is an array of ExpenseDTO
           setExpenses(Array.isArray(res.data) ? res.data : []);
         } else {
@@ -128,6 +128,7 @@ const ExpensePlanner = () => {
       return;
     }
     try {
+          const username = localStorage.getItem("username");
       const expenseDTO = {
         id:
           editIndex !== null && expenses[editIndex]?.id
@@ -150,11 +151,12 @@ const ExpensePlanner = () => {
         setSnackbar({ open: true, message: "Expense updated." });
       } else {
         // Add new expense
-        await ApiService.addExpense(userId, expenseDTO);
+    
+        await ApiService.addExpense(username, expenseDTO);
         setSnackbar({ open: true, message: "Expense added." });
       }
       // Refresh list
-      const res = await ApiService.getExpenses(userId);
+      const res = await ApiService.getExpenses(username);
       setExpenses(Array.isArray(res.data) ? res.data : []);
     } catch (e) {
       setSnackbar({ open: true, message: "API error." });
@@ -167,11 +169,11 @@ const ExpensePlanner = () => {
       setSnackbar({ open: true, message: "Expense not found." });
       return;
     }
-    try {
+    try {   
       await ApiService.deleteExpense(expenses[idx].id);
-      const userId = localStorage.getItem("userId");
+      const username = localStorage.getItem("username");
       // Refresh list
-      const res = await ApiService.getExpenses(userId);
+      const res = await ApiService.getExpenses(username);
       setExpenses(Array.isArray(res.data) ? res.data : []);
       setSnackbar({ open: true, message: "Expense deleted." });
     } catch (e) {
@@ -190,7 +192,8 @@ const ExpensePlanner = () => {
       await ApiService.updateExpense(expense.id, updatedExpense);
       const userId = localStorage.getItem("userId");
       // Refresh list
-      const res = await ApiService.getExpenses(userId);
+      const username = localStorage.getItem("username");
+      const res = await ApiService.getExpenses(username);
       setExpenses(Array.isArray(res.data) ? res.data : []);
       setSnackbar({ open: true, message: "Marked as paid." });
     } catch (e) {

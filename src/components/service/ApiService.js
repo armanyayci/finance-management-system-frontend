@@ -6,14 +6,13 @@ export default class ApiService {
   // static BASE_URL3 = "http://localhost:8084/finance-mgmt";
   // static BASE_URL4 = "http://localhost:8083/finance-mgmt";
 
-  static BASE_URL1 = "http://localhost:8086/finance-mgmt";
-  static BASE_URL2 = "http://localhost:8086/finance-mgmt";
-  static BASE_URL3 = "http://localhost:8086/finance-mgmt";
-  static BASE_URL4 = "http://localhost:8086/finance-mgmt";
+  static BASE_URL1 = "http://localhost:8086";
+  static BASE_URL2 = "http://localhost:8086";
+  static BASE_URL3 = "http://localhost:8086";
+  static BASE_URL4 = "http://localhost:8086";
 
   static getHeader() {
     const token = localStorage.getItem("token");
-    console.log("Token from localStorage:", token); // Debug için
     return {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
@@ -38,36 +37,30 @@ export default class ApiService {
 
   static async GetAccountInfoByUsername(username) {
     const response = await axios.get(
-      `${this.BASE_URL2}/api/account/get-account/${username}`,
-      { headers: this.getHeader() }
+      `${this.BASE_URL2}/api/account/get-account/${username}`
     );
     return response.data;
   }
   static async moneyTransfer(transferInfo) {
     const response = await axios.post(
       `${this.BASE_URL2}/api/account/money-transfer`,
-      transferInfo,
-      { headers: this.getHeader() }
+      transferInfo
     );
     return response.data;
   }
   static async GetAllUsers() {
-    const response = await axios.get(`${this.BASE_URL3}/api/users`, {
-      headers: this.getHeader()
-    });
+    const response = await axios.get(`${this.BASE_URL3}/api/users`);
     return response.data;
   }
   static async GetUserById(userİd) {
     const response = await axios.get(`${this.BASE_URL3}/api/users`, {
       params: { id: userİd },
-      headers: this.getHeader()
     });
     return response.data;
   }
   static async getExpenseRate(username, startDate, endDate) {
     const response = await axios.get(
-      `${this.BASE_URL2}/api/account/expense-rate/${username}/${startDate}/${endDate}`,
-      { headers: this.getHeader() }
+      `${this.BASE_URL2}/api/account/expense-rate/${username}/${startDate}/${endDate}`
     );
     return response.data;
   }
@@ -82,10 +75,7 @@ export default class ApiService {
   static async getUserCurrencies(userId) {
     const response = await axios.get(
       `${this.BASE_URL4}/api/currency-exchange/get-user-currencies`,
-      { 
-        params: { userId },
-        headers: this.getHeader()
-      }
+      { params: { userId } }
     );
     return response.data;
   }
@@ -131,6 +121,7 @@ export default class ApiService {
   static async getGoals(userId) {
     const response = await axios.get(
       `${this.BASE_URL3}/api/users/get-goals/${userId}`,
+      {},
       { headers: this.getHeader() }
     );
     return response.data;
@@ -150,16 +141,16 @@ export default class ApiService {
     );
     return response.data;
   }
-  static async getExpenses(userId) {
+  static async getExpenses(username) {
     const response = await axios.get(
       `${this.BASE_URL2}/api/expense/get-expenses`,
-      { params: { userId }, headers: this.getHeader() }
+      { params: { username }, headers: this.getHeader() }
     );
     return response.data;
   }
-  static async addExpense(userId, expenseDTO) {
+  static async addExpense(username, expenseDTO) {
     const response = await axios.post(
-      `${this.BASE_URL2}/api/expense/add-expense/${userId}`,
+      `${this.BASE_URL2}/api/expense/add-expense/${username}`,
       expenseDTO,
       { headers: this.getHeader() }
     );
