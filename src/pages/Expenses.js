@@ -122,8 +122,8 @@ const ExpensePlanner = () => {
       });
       return;
     }
-    const userId = localStorage.getItem("userId");
-    if (!userId) {
+    const username = localStorage.getItem("username");
+    if (!username) {
       setSnackbar({ open: true, message: "User not found." });
       return;
     }

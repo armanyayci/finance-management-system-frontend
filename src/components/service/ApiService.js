@@ -10,6 +10,7 @@ export default class ApiService {
   static BASE_URL2 = "http://localhost:8086";
   static BASE_URL3 = "http://localhost:8086";
   static BASE_URL4 = "http://localhost:8086";
+  static BASE_URL5 = "http://localhost:8086";
 
   static getHeader() {
     const token = localStorage.getItem("token");
@@ -143,14 +144,14 @@ export default class ApiService {
   }
   static async getExpenses(username) {
     const response = await axios.get(
-      `${this.BASE_URL2}/api/expense/get-expenses`,
+      `${this.BASE_URL5}/api/expense/get-expenses`,
       { params: { username }, headers: this.getHeader() }
     );
     return response.data;
   }
   static async addExpense(username, expenseDTO) {
     const response = await axios.post(
-      `${this.BASE_URL2}/api/expense/add-expense/${username}`,
+      `${this.BASE_URL5}/api/expense/add-expense/${username}`,
       expenseDTO,
       { headers: this.getHeader() }
     );
@@ -158,14 +159,14 @@ export default class ApiService {
   }
   static async deleteExpense(expenseId) {
     const response = await axios.delete(
-      `${this.BASE_URL2}/api/expense/delete-expense/${expenseId}`,
+      `${this.BASE_URL5}/api/expense/delete-expense/${expenseId}`,
       { headers: this.getHeader() }
     );
     return response.data;
   }
   static async updateExpense(expenseId, expenseDTO) {
     const response = await axios.put(
-      `${this.BASE_URL2}/api/expense/update-expense/${expenseId}`,
+      `${this.BASE_URL5}/api/expense/update-expense/${expenseId}`,
       expenseDTO,
       { headers: this.getHeader() }
     );
